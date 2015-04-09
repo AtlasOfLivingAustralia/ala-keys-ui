@@ -2,13 +2,18 @@
 
 <html>
     <head>
+        <meta name="layout" content="keybase"/>
         <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
         <title>KeyBase | Projects</title>
-        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-        <script type="text/javascript" src="/keybase/js/jquery.keybase.project.js"></script>
     </head>
     <body>
-        <h1>KeyBase projects</h1>
-        <div id="projects"></div>
+    <div class="container">
+        <div class="row">
+            <div class="col-sm-12">
+                <h1>KeyBase projects</h1>
+                <div id="projects"></div>
+            </div>
+        </div>
+    </div>
     </body>
 </html>

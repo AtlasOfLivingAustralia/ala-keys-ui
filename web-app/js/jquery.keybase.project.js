@@ -1,5 +1,5 @@
 $(function() {
-    var url = 'http://localhost:8080/keybase/project/getprojects';
+    var url = 'http://localhost:8080/ala-keys-ui/project/getprojects';
     $.getJSON(url, function(data) {
         var items = [];
         $.each(data.projects, function(index, item) {
