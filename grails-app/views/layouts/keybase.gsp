@@ -5,11 +5,10 @@
   Time: 5:41 PM
 --%>
 
-<!DOCTYPE html>
+<g:applyLayout name="main">
 <head>
     <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="shortcut icon" href="${assetPath(src: 'favicon.ico')}" type="image/x-icon">
 
     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet" />
     <link href="/keybase/css/jqueryui.autocomplete.css" rel="stylesheet" />
@@ -24,7 +23,7 @@
     <g:layoutHead/>
 </head>
 <body>
-<nav class="navbar navbar-inverse navbar-fixed-top">
+<!--nav class="navbar navbar-inverse navbar-fixed-top">
     <div class="container">
         <div class="navbar-header">
             <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
@@ -47,9 +46,9 @@
             </form>
         </div><!--/.navbar-collapse -->
     </div>
-</nav>
+</nav-->
 <g:layoutBody/>
 <div class="footer" role="contentinfo"></div>
 <div id="spinner" class="spinner" style="display:none;"><g:message code="spinner.alt" default="Loading&hellip;"/></div>
 </body>
-</html>
+</g:applyLayout>
