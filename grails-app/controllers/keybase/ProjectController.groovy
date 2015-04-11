@@ -14,6 +14,10 @@ class ProjectController {
     def list() {
         render(view: 'list');
     }
+
+    def view() {
+
+    }
     
     def edit() {
         
