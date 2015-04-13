@@ -2,5 +2,7 @@ package keybase
 
 class KeyController {
 
-    def index() { }
+    def show() {
+
+    }
 }

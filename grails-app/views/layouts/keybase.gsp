@@ -7,48 +7,55 @@
 
 <g:applyLayout name="main">
 <head>
-    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css" rel="stylesheet" />
-    <link href="/keybase/css/jqueryui.autocomplete.css" rel="stylesheet" />
+    <link href="/keybase/css/dynatree/skin/ui.dynatree.css" rel="stylesheet" />
     <link href="/keybase/css/main.css" rel="stylesheet" />
 
+    <script type="text/javascript" src="/keybase/js/jspath.min.js"></script>
 
-    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-    <script src="//ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/jquery-ui.min.js"></script>
-
+    <script type="text/javascript" src="/keybase/js/jquery-ui-widget.min.js"></script>
+    <script type="text/javascript" src="/keybase/js/dynatree/jquery.dynatree.js"></script>
+    <% if (params.controller == 'project' && params.action == 'show') { %>
+    <script type="text/javascript">var project_id = <%=params.id%></script>
+    <% } %>
+    <% if (params.controller == 'key' && params.action == 'show') { %>
+    <script type="text/javascript">var key_id = <%=params.id%></script>
+    <% } %>
     <script type="text/javascript" src="/keybase/js/jquery.keybase.project.js"></script>
+    <script type="text/javascript" src="/keybase/js/jquery.keybase.key.js"></script>
+    <script type="text/javascript" src="/keybase/js/jquery.keybase.js"></script>
     <g:layoutHead/>
 </head>
 <body>
-<!--nav class="navbar navbar-inverse navbar-fixed-top">
-    <div class="container">
-        <div class="navbar-header">
-            <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
-                <span class="sr-only">Toggle navigation</span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-                <span class="icon-bar"></span>
-            </button>
-            <a class="navbar-brand" href="/keybase">KeyBase</a>
+
+    <!-- KeyBase navbar -->
+    <nav class="navbar navbar-default navbar-static-top keybase-nav">
+        <div class="container">
+            <div class="navbar-header">
+                <a class="navbar-brand" href="/keybase"><img alt="" src="/keybase/images/keybase-logo-blue-25.png" /></a>
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar" aria-expanded="false" aria-controls="navbar">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="/keybase">KeyBase</a>
+            </div>
+            <div id="navbar" class="navbar-collapse collapse">
+                <ul class="nav navbar-nav">
+                    <li><a href="/keybase/project">Projects</a></li>
+                    <li><a href="#">About</a></li>
+                    <li><a href="#">Help</a></li>
+                </ul>
+                <!--ul class="nav navbar-nav navbar-right">
+                    <li><a href="../navbar/">Default</a></li>
+                    <li class="active"><a href="./">Static top <span class="sr-only">(current)</span></a></li>
+                    <li><a href="../navbar-fixed-top/">Fixed top</a></li>
+                </ul-->
+            </div><!--/.nav-collapse -->
         </div>
-        <div id="navbar" class="navbar-collapse collapse">
-            <form class="navbar-form navbar-right">
-                <div class="form-group">
-                    <input type="text" placeholder="Email" class="form-control">
-                </div>
-                <div class="form-group">
-                    <input type="password" placeholder="Password" class="form-control">
-                </div>
-                <button type="submit" class="btn btn-success">Sign in</button>
-            </form>
-        </div><!--/.navbar-collapse -->
-    </div>
-</nav-->
-<g:layoutBody/>
-<div class="footer" role="contentinfo"></div>
-<div id="spinner" class="spinner" style="display:none;"><g:message code="spinner.alt" default="Loading&hellip;"/></div>
+    </nav>
+
+    <g:layoutBody/>
 </body>
 </g:applyLayout>

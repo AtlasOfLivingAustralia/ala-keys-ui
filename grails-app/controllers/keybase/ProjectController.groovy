@@ -7,16 +7,16 @@ import groovy.json.JsonOutput
 
 class ProjectController {
 
-    def index() { 
-        redirect(action: 'list');
+    def index() {
+        redirect(action: 'list')
     }
     
     def list() {
-        render(view: 'list');
     }
 
-    def view() {
-
+    def show() {
+        def project_id = params.id
+        [project_id: project_id]
     }
     
     def edit() {
