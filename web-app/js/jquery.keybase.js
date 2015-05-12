@@ -23,7 +23,6 @@ $(function() {
         });
 
         $('#project-tab').on('click', 'a[href=#keys-alphabetical]', function(e) {
-            console.log('Hello');
             $('#keys-alphabetical').keybaseProject('keysAlphabetical', {params: {project: project_id}});
         });
 
@@ -31,6 +30,11 @@ $(function() {
     }
 
     if ($('#keybase-player').length) {
-        $('keybase-player').keybase({key: key_id});
+        $.fn.keybase({
+            playerDiv: '#keybase-player',
+            key: key_id
+            //titleDiv: '.keybase-key-title',
+            //sourceDiv: '.keybase-key-source'
+        });
     }
 });
