@@ -1,0 +1,15 @@
+.dynatree-container>li {
+    width: 95%;
+}
+
+a.dynatree-title {
+    white-space: normal;
+}
+
+.couplet-highlight {
+    background-color: #87CEFA;
+    margin-right: -35px;
+    padding-right: 35px;
+    margin-left: 10px;
+    padding-left: 6px;
+}

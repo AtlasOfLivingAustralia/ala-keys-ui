@@ -37,4 +37,21 @@ $(function() {
             //sourceDiv: '.keybase-key-source'
         });
     }
+
+    $('.nav-tabs').on('click', 'a[href=#tab_indented]', function (event ) {
+        if ($('#tab_indented .dynatree-container').length === 0) {
+            $.fn.keybase('indentedKey', {
+                indentedKeyDiv: '#keybase-indented'
+            });
+        }
+    });
+
+    $('.nav-tabs').on('click', 'a[href=#tab_bracketed]', function (event ) {
+        if ($('#tab_bracketed .dynatree-container').length === 0) {
+            $.fn.keybase('bracketedKey', {
+                bracketedKeyDiv: '#keybase-bracketed'
+            });
+        }
+    });
+
 });

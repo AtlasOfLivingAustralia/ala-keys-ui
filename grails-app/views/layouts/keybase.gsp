@@ -8,8 +8,9 @@
 <g:applyLayout name="main">
 <head>
 
-    <link href="/keybase/css/dynatree/skin/ui.dynatree.css" rel="stylesheet" />
+    <link href="/keybase/css/dynatree/skin-vista/ui.dynatree.css" rel="stylesheet" />
     <link href="/keybase/css/main.css" rel="stylesheet" />
+    <link href="/keybase/css/keybase.dynatree.css" rel="stylesheet" />
 
     <script type="text/javascript" src="/keybase/js/jspath.min.js"></script>
 

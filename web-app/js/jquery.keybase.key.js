@@ -3,8 +3,6 @@
  */
 
 (function( $ ) {
-    var json;
-    var settings;
 
     $.fn.keybase = function() {
         elem = this;
@@ -92,6 +90,14 @@
                 }
             });
 
+        }
+
+        if (action === "indentedKey") {
+            indentedKey();
+        }
+
+        if (action === "bracketedKey") {
+            bracketedKey();
         }
     };
 
@@ -506,13 +512,121 @@
         return JSPath.apply('.leads{.lead_id === "'+  leadID + '"}.parent_id[0]', json);
     };
 
+    var indentedKey = function() {
+        indented_key = [];
+        var root = {};
+        root.title = json.key_name;
+        root.isFolder = true;
+        root.expand = true;
+        root.children = [];
 
+        indentedKeyNode(rootNodeID, root);
+        indented_key.push(root);
+        $(settings.indentedKeyDiv).dynatree({
+            children: indented_key,
+            data: {mode: "all"},
+            expand: true,
+        });
+    };
 
+    var indentedKeyNode = function(parent_id, parent) {
+        var children = JSPath('.{.parent_id==' + parent_id + '}', nested_sets);
+        parent.children = [];
+        if (children.length > 0) {
+            var couplet = {};
+            couplet.title = "Couplet";
+            couplet.isFolder = true;
+            couplet.expand = true;
+            couplet.children = [];
+            parent.children[0] = couplet;
 
+            //parent.children = children;
+            $.each(children, function(index, lead) {
+                var child = $.extend({}, lead);
+                child.title = lead.lead_text;
+                child.href = "#" + lead.lead_id;
+                child.expand = true;
+                if (child.item == null) {
+                    delete child.item;
+                }
+                delete child.lead_text;
+                delete child.left;
+                delete child.right;
+                delete child.lead_id;
+                delete child.parent_id;
+                couplet.children[index] = child;
+                indentedKeyNode(lead.lead_id, child);
+            });
+        }
+        else {
+            var taxa = {};
+            taxa.title = "Item";
+            taxa.isFolder = true;
+            taxa.children = [];
 
+            var taxon = {};
+            taxon.title = JSPath.apply('.items{.item_id==' + parent.item + '}.item_name', json)[0];
+            taxa.children[0] = taxon;
+            //alert (taxon.title);
+            delete parent.item;
+            taxa.expand = true;
+            parent.children[0] = taxa;
+        }
+    };
 
+    var bracketedKey = function() {
+        bracketed_key = [];
+        parent_ids = JSPath.apply('.parent_id', nested_sets);
+        var nodes = [];
 
+        var root = {};
+        root.title = json.key_name;
+        root.isFolder = true;
+        root.expand = true;
+        root.children = [];
 
+        $.each(parent_ids, function (index, parent) {
+            if (nodes.indexOf(parent) == -1) {
+                nodes.push(parent);
 
+                var couplet = {};
+                couplet.title = "Couplet";
+                couplet.isFolder = true;
+                couplet.expand = true;
+                couplet.children = [];
+
+                leads = JSPath.apply('.{.parent_id==' + parent + '}', nested_sets);
+                $.each(leads, function(index, lead) {
+                    var l = {};
+                    l.title = lead.lead_text;
+                    l.href = '#' + lead.lead_id;
+                    l.expand = true;
+                    l.children = [];
+                    if (lead.item != null) {
+                        var items = {};
+                        items.title = "Item";
+                        items.isFolder = true;
+                        items.expand = true;
+                        items.children = [];
+                        var item = {};
+                        item.title = JSPath.apply('.items{.item_id==' + lead.item + '}.item_name', json)[0];
+                        item.expand = true;
+                        items.children.push(item);
+                        l.children.push(items);
+                    }
+                    couplet.children.push(l);
+                });
+                root.children.push(couplet);
+
+            }
+        });
+        bracketed_key.push(root);
+
+        $(settings.bracketedKeyDiv).dynatree({
+            children: bracketed_key,
+            data: {mode: "all"},
+            expand: true
+        });
+    };
 
 }( jQuery ));
