@@ -1,8 +1,48 @@
 /**
  * Created by NKlaze on 10/04/2015.
+ *
+ * $.fn.keybase([action], options);
+ *
+ * var options = {
+ *   baseUrl: "http://keybase.rbg.vic.gov.au/ws/keyJSON",
+ *   ajaxDataType: "jsonp",
+ *   key: 2672,
+ *   title: true,
+ *   titleDiv: ".keybase-key-title",
+ *   source: true,
+ *   sourceDiv: ".keybase-key-source",
+ *   cssClass": {
+ *       currentNode: "keybase-player-currentnode",
+ *       path: "keybase-player-path",
+ *       remainingItems: "keybase-player-remainingitems",
+ *       discardedItems: "keybase-player-discardeditems",
+ *       stepBack: "keybase-player-stepback",
+ *       startOver: "keybase-player-startover"
+ *   },
+ *   playerDiv: "#keybase-player",
+ *   currentNodeDisplay: function(node, currentNodeDiv),
+ *   discardedItemsDisplay: function(items, itemsDiv),
+ *   pathDisplay: function(path, pathDiv),
+ *   playerEvents: function(),
+ *   playerWindow: function(),
+ *   remainingItemsDisplay: function(items, itemsDiv),
+ *   resultDisplay: function(result, resultDiv)
+ * };
  */
 
+
+
 (function( $ ) {
+    var settings;
+    var json;
+
+    var rootNodeID;
+    var next_id;
+
+    var currentNodeElem;
+    var pathElem;
+    var remainingItemsElem;
+    var discardedItemsElem;
 
     $.fn.keybase = function() {
         elem = this;
@@ -16,68 +56,46 @@
             var options = arguments[1];
         }
 
-        settings = $.extend({
-            baseUrl: "http://keybase.rbg.vic.gov.au/ws/keyJSON",
-            key: "",
-            title: true,
-            titleDiv: false,
-            source: true,
-            sourceDiv: false
-        }, options);
+        settings = $.extend(true, {}, $.fn.keybase.defaults, settings, options);
+
+        var data;
+        if (settings.data) {
+            data = settings.data;
+        }
+        else {
+            if (settings.key) {
+                data = {key_id: settings.key};
+            }
+            else {
+                data = false;
+            }
+        }
 
         if (!json) {
+            var contentType ="application/x-www-form-urlencoded; charset=utf-8";
+
+            if(window.XDomainRequest) //for IE8,IE9
+                contentType = "text/plain";
+
+
             $.ajax({
                 url: settings.baseUrl,
                 data: {key_id: settings.key},
-                dataType: "jsonp",
-                async: false,
+                dataType: settings.ajaxDataType,
+                contentType: contentType,
                 success:function(data){
                     json = data;
 
                     if (settings.title) {
-                        var titleDiv;
-                        if (settings.titleDiv) {
-                            titleDiv = settings.titleDiv;
-                        }
-                        else {
-                            if (!$('.keybase-key-title').length) {
-                                $(settings.playerDiv).append('<div class="keybase-key-title" style="clear:both"></div>');
-                            }
-                            titleDiv = '.keybase-key-title';
-                        }
-
-                        $('<div>', {class: 'keybase-project-icon'})
-                            .append('<img src="' + json.project.project_icon + '" alt="" />')
-                            .appendTo(titleDiv);
-
-                        $('<h1>', {
-                            style: "float:left;",
-                            html: '<a href="/keybase/project/show/' + json.project.project_id + '"<span class="keybase-project-name">' + json.project.project_name + '</span></a>: <span class="keybase-key-name">' + json.key_name + '</span>'
-                        }).appendTo(titleDiv);
+                        keyTitle();
                     }
 
                     if (settings.source) {
-                        src = keySource();
-                        if (src) {
-                            var sourceDiv;
-                            if (settings.sourceDiv) {
-                                sourceDiv = settings.sourceDiv;
-                            }
-                            else {
-                                if (!$('.keybase-key-source').length) {
-                                    $('<div>', {class: 'keybase-key-source'})
-                                        .appendTo(settings.playerDiv);
-                                }
-                                sourceDiv = '.keybase-key-source';
-                            }
-
-                            $('<div>', {class: 'keybase-key-source', html: src})
-                                .appendTo(sourceDiv);
-                        }
+                        keySource(json.source);
                     }
 
                     if (!$('.keybase-player-window').length) {
-                        playerWindow();
+                        settings.playerWindow();
                     }
 
                     // root node
@@ -86,7 +104,10 @@
 
                     nestedSets();
                     nextCouplet();
-                    setPlayerEvents();
+                    settings.playerEvents();
+                },
+                error:function(jqXHR,textStatus,errorThrown) {
+                    alert("You can not send Cross Domain AJAX requests: "+errorThrown);
                 }
             });
 
@@ -99,37 +120,58 @@
         if (action === "bracketedKey") {
             bracketedKey();
         }
+
+        console.log(settings);
     };
 
-    var setPlayerEvents = function() {
-        $('.keybase-player-currentnode').on('click', 'a', function( event ) {
+    $.fn.keybase.defaults = {
+        baseUrl: "http://keybase.rbg.vic.gov.au/ws/keyJSON",
+        ajaxDataType: 'json',
+        key: "",
+        title: true,
+        titleDiv: '.keybase-key-title',
+        source: true,
+        sourceDiv: '.keybase-key-source'
+    };
+
+    $.fn.keybase.defaults.cssClass = {
+        currentNode: 'keybase-player-currentnode',
+        path: 'keybase-player-path',
+        remainingItems: 'keybase-player-remainingitems',
+        discardedItems: 'keybase-player-discardeditems',
+        stepBack: 'keybase-player-stepback',
+        startOver: 'keybase-player-startover'
+    };
+
+    $.fn.keybase.defaults.playerEvents = function() {
+        $('.' + settings.cssClass.currentNode).on('click', 'a', function( event ) {
             event.preventDefault();
             next_id = $(event.target).attr('href').replace("#l_", "");
             nextCouplet();
         });
 
-        $('.keybase-player-path').on('click', 'a', function( event ) {
+        $('.' + settings.cssClass.path).on('click', 'a', function( event ) {
             event.preventDefault();
             var lead_id = $(event.target).attr('href').replace("#l_", "");
             next_id = getParent(lead_id);
             nextCouplet();
         });
 
-        $('.keybase-player-stepback').on('click', 'a', function( event ) {
+        $('.' + settings.cssClass.stepBack).on('click', 'a', function( event ) {
             event.preventDefault();
             var lead_id = $(event.target).attr('href').replace("#l_", "");
             next_id = getParent(lead_id);
             nextCouplet();
         });
 
-        $('.keybase-player-startover').on('click', 'a.first-node', function( event ) {
+        $('.' + settings.cssClass.startOver).on('click', 'a.first-node', function( event ) {
             event.preventDefault();
             next_id = $(event.target).attr('href').replace("#l_", "");
             nextCouplet();
         });
     };
 
-    var playerWindow = function() {
+    $.fn.keybase.defaults.playerWindow = function() {
         $('<div>', {class: 'keybase-player-window'}).appendTo(settings.playerDiv);
 
         if (!$('.keybase-player-window').height()) {
@@ -137,15 +179,21 @@
             $('.keybase-player-window').css('height', panelHeight + 'px');
         }
 
+        var css = {
+            'position': 'absolute',
+            'height': (($('.keybase-player-window').height()*0.5) - 3) + 'px',
+            'width': '100%'
+        };
+
         $('<div>', {class: 'keybase-player-leftpane'}).appendTo('.keybase-player-window');
-        $('<div>', {class: 'keybase-player-currentnode'}).appendTo('.keybase-player-leftpane');
+        currentNodeElem = $('<div>', {class: settings.cssClass.currentNode}).css(css).appendTo('.keybase-player-leftpane');
         $('<div>', {class: 'keybase-player-drag-updown'}).appendTo('.keybase-player-leftpane');
-        $('<div>', {class: 'keybase-player-path'}).appendTo('.keybase-player-leftpane');
+        pathElem = $('<div>', {class: settings.cssClass.path}).css(css).appendTo('.keybase-player-leftpane');
         $('<div>', {class: 'keybase-player-drag-leftright'}).appendTo('.keybase-player-window');
         $('<div>', {class: 'keybase-player-rightpane'}).appendTo('.keybase-player-window');
-        $('<div>', {class: 'keybase-player-remainingitems'}).appendTo('.keybase-player-rightpane');
+        remainingItemsElem = $('<div>', {class: settings.cssClass.remainingItems}).css(css).appendTo('.keybase-player-rightpane');
         $('<div>', {class: 'keybase-player-drag-updown'}).appendTo('.keybase-player-rightpane');
-        $('<div>', {class: 'keybase-player-discardeditems'}).appendTo('.keybase-player-rightpane');
+        discardedItemsElem = $('<div>', {class: settings.cssClass.discardedItems}).css(css).appendTo('.keybase-player-rightpane');
 
 
         $('.keybase-player-window').css({
@@ -160,7 +208,9 @@
             'width': '100%'
         });
         $('.keybase-player-leftpane, .keybase-player-rightpane').css({
-            'height': '100%', 'position': 'absolute', 'top': '0px'
+            'height': '100%',
+            'position': 'absolute',
+            'top': '0px'
         });
 
         $('.keybase-player-leftpane').css({
@@ -176,46 +226,47 @@
             'width': (($('.keybase-player-window').width() * 0.33) - 3) + 'px',
             'left': ($('.keybase-player-leftpane').width() + 6) + 'px'
         });
-        $('.keybase-player-currentnode, .keybase-player-path, ' +
-            '.keybase-player-remainingitems, .keybase-player-discardeditems')
-            .css({
-                'position': 'absolute',
-                'height': (($('.keybase-player-window').height()*0.5) - 3) + 'px',
-                'width': '100%'
-            });
 
         $('.keybase-player-drag-updown').css({
             'position': 'absolute',
             'top': (($('.keybase-player-window').height() * 0.5) - 3) + 'px'
         });
-        $('.keybase-player-path, .keybase-player-discardeditems').css({
+        $('.' + settings.cssClass.path + ', .' + settings.cssClass.discardedItems).css({
             'top': (($('.keybase-player-window').height() * 0.5) + 3) + 'px'
         });
 
 
 
-        $('<h3>', {html: 'Current node'}).appendTo('.keybase-player-currentnode');
-        $('<h3>', {html: 'Path'}).appendTo('.keybase-player-path');
-        $('<h3>', {html: 'Remaining taxa'}).appendTo('.keybase-player-remainingitems');
-        $('<h3>', {html: 'Discarded taxa'}).appendTo('.keybase-player-discardeditems');
+        $('<h3>', {html: 'Current node'}).appendTo(currentNodeElem);
+        $('<h3>', {html: 'Path'}).appendTo(pathElem);
+        $('<h3>', {html: 'Remaining taxa'}).appendTo(remainingItemsElem);
+        $('<h3>', {html: 'Discarded taxa'}).appendTo(discardedItemsElem);
 
-        $('<div>').appendTo('.keybase-player-currentnode');
-        $('<div>').appendTo('.keybase-player-path');
-        $('<div>').appendTo('.keybase-player-remainingitems');
-        $('<div>').appendTo('.keybase-player-discardeditems');
+        $('<div>').appendTo(currentNodeElem);
+        $('<div>').appendTo(pathElem);
+        $('<div>').appendTo(remainingItemsElem);
+        $('<div>').appendTo(discardedItemsElem);
 
-        $('.keybase-player-currentnode>div').css('height', ($('.keybase-player-currentnode').height()-$('.keybase-player-currentnode>h3').height()-(parseInt($('.keybase-player-currentnode>h3').css('padding-top'))*2)) + 'px');
-        $('.keybase-player-path>div').css('height', ($('.keybase-player-path').height()-$('.keybase-player-path>h3').height()-(parseInt($('.keybase-player-path>h3').css('padding-top'))*2)) + 'px');
-        $('.keybase-player-remainingitems>div').css('height', ($('.keybase-player-remainingitems').height()-$('.keybase-player-remainingitems>h3').height()-(parseInt($('.keybase-player-remainingitems>h3').css('padding-top'))*2)) + 'px');
-        $('.keybase-player-discardeditems>div').css('height', ($('.keybase-player-discardeditems').height()-$('.keybase-player-discardeditems>h3').height()-(parseInt($('.keybase-player-discardeditems>h3').css('padding-top'))*2)) + 'px');
+        currentNodeElem.children('div').css('height', (currentNodeElem.height() -
+            currentNodeElem.children('h3').height() -
+            (parseInt(currentNodeElem.children('h3').css('padding-top'))*2)) + 'px');
+        pathElem.children('div').css('height', (pathElem.height() -
+            pathElem.children('h3').height() -
+            (parseInt(pathElem.children('h3').css('padding-top'))*2)) + 'px');
+        remainingItemsElem.children('div').css('height', (remainingItemsElem.height() -
+            remainingItemsElem.children('h3').height() -
+            (parseInt(remainingItemsElem.children('h3').css('padding-top'))*2)) + 'px');
+        discardedItemsElem.children('div').css('height', (discardedItemsElem.height() -
+            discardedItemsElem.children('h3').height() -
+            (parseInt(discardedItemsElem.children('h3').css('padding-top'))*2)) + 'px');
 
 
         // KeyBase Player menu
-        $('<span>', {class: 'keybase-player-menu'}).appendTo('.keybase-player-currentnode h3');
-        $('<span>', {class: 'keybase-player-startover'}).appendTo('.keybase-player-menu');
-        $('<a>', {href: '#'}).appendTo('.keybase-player-startover');
-        $('<span>', {class: 'keybase-player-stepback'}).appendTo('.keybase-player-menu');
-        $('<a>', {href: '#'}).appendTo('.keybase-player-stepback');
+        $('<span>', {class: 'keybase-player-menu'}).appendTo('.' + settings.cssClass.currentNode + ' h3');
+        $('<span>', {class: settings.cssClass.startOver}).appendTo('.keybase-player-menu');
+        $('<a>', {href: '#'}).appendTo('.' + settings.cssClass.startOver);
+        $('<span>', {class: settings.cssClass.stepBack}).appendTo('.keybase-player-menu');
+        $('<a>', {href: '#'}).appendTo('.' + settings.cssClass.stepBack);
 
         // Resize Player panes
         var position;
@@ -239,14 +290,23 @@
             position = $('.keybase-player-leftpane').offset();
             $(document).mousemove(function(e) {
                 if (e.pageY > position.top+29
-                    && e.pageY < position.top+$('.keybase-player-window').height()-32) {
+                    && e.pageY < position.top+$('.keybase-player-window').height()-60) {
                     $('.keybase-player-leftpane .keybase-player-drag-updown').css('top', e.pageY-position.top+2);
-                    $('.keybase-player-currentnode').css("height", e.pageY-position.top);
-                    $('.keybase-player-currentnode>div').css("height", e.pageY-position.top-37);
-                    $('.keybase-player-path').css({'top': e.pageY-position.top+5,
-                        'height': ($('.keybase-player-window').height()-$('.keybase-player-currentnode').height()-6) + 'px'});
-                    $('.keybase-player-currentnode>div').css('height', ($('.keybase-player-currentnode').height()-$('.keybase-player-currentnode>h3').height()-(parseInt($('.keybase-player-currentnode>h3').css('padding-top'))*2)) + 'px');
-                    $('.keybase-player-path>div').css('height', ($('.keybase-player-path').height()-$('.keybase-player-path>h3').height()-(parseInt($('.keybase-player-path>h3').css('padding-top'))*2)) + 'px');
+                    currentNodeElem.css("height", e.pageY-position.top);
+                    pathElem.css({'top': e.pageY-position.top+5,
+                        'height': ($('.keybase-player-window').height()-currentNodeElem.height()-6) + 'px'});
+                    currentNodeElem.children('div').css('height', (currentNodeElem.height() -
+                        currentNodeElem.children('h3').height() -
+                        (parseInt(currentNodeElem.children('h3').css('padding-top'))*2)) + 'px');
+                    pathElem.children('div').css('height', (pathElem.height() -
+                        pathElem.children('h3').height() -
+                        (parseInt(pathElem.children('h3').css('padding-top'))*2)) + 'px');
+                    if (pathElem.children('div').height() < 5) {
+                        pathItemsElem.children('div').css('overflow-y', 'hidden').children().hide();
+                    }
+                    else {
+                        pathItemsElem.children('div').css('overflow-y', 'auto').children().show();
+                    }
                 }
             })
         });
@@ -258,12 +318,22 @@
                 if (e.pageY > position.top+29
                     && e.pageY < position.top+$('.keybase-player-window').height()-32) {
                     $('.keybase-player-rightpane .keybase-player-drag-updown').css('top', e.pageY-position.top+2);
-                    $('.keybase-player-remainingitems').css("height", e.pageY-position.top);
-                    $('.keybase-player-remainingitems>div').css("height", e.pageY-position.top-37);
-                    $('.keybase-player-discardeditems').css({'top': e.pageY-position.top+5,
-                        'height': ($('.keybase-player-window').height()-$('.keybase-player-remainingitems').height()-6) + 'px'});
-                    $('.keybase-player-remainingitems>div').css('height', ($('.keybase-player-remainingitems').height()-$('.keybase-player-remainingitems>h3').height()-(parseInt($('.keybase-player-remainingitems>h3').css('padding-top'))*2)) + 'px');
-                    $('.keybase-player-discardeditems>div').css('height', ($('.keybase-player-discardeditems').height()-$('.keybase-player-discardeditems>h3').height()-(parseInt($('.keybase-player-discardeditems>h3').css('padding-top'))*2)) + 'px');
+                    remainingItemsElem.css("height", e.pageY-position.top);
+                    discardedItemsElem.css({'top': e.pageY-position.top+5,
+                        'height': ($('.keybase-player-window').height() -
+                            remainingItemsElem.height()-6) + 'px'});
+                    remainingItemsElem.children('div').css('height', (remainingItemsElem.height() -
+                        remainingItemsElem.children('h3').height() -
+                        (parseInt(remainingItemsElem.children('h3').css('padding-top'))*2)) + 'px');
+                    discardedItemsElem.children('div').css('height', (discardedItemsElem.height() -
+                        discardedItemsElem.children('h3').height() -
+                        (parseInt(discardedItemsElem.children('h3').css('padding-top'))*2)) + 'px');
+                    if (discardedItemsElem.children('div').height() < 5) {
+                        discardedItemsElem.children('div').css('overflow-y', 'hidden').children().hide();
+                    }
+                    else {
+                        discardedItemsElem.children('div').css('overflow-y', 'auto').children().show();
+                    }
                 }
             })
         });
@@ -277,8 +347,28 @@
 
     };
 
-    var keySource = function() {
-        var source = json.source;
+    var keyTitle = function() {
+        if (!$(settings.titleDiv).length) {
+            if (settings.titleDiv.substr(0, 1) === '#') {
+                $('<div>', {id: settings.titleDiv.substr(1)}).appendTo(settings.playerDiv);
+            }
+            else {
+                $('<div>', {class: settings.titleDiv.substr(1)}).appendTo(settings.playerDiv);
+            }
+        }
+
+        $('<div>', {class: 'keybase-project-icon'})
+            .append('<img src="' + json.project.project_icon + '" alt="" />')
+            .appendTo(settings.titleDiv);
+
+        $('<h1>', {
+            style: "float:left;",
+            html: '<a href="/keybase/project/show/' + json.project.project_id + '"<span class="keybase-project-name">' + json.project.project_name + '</span></a>: <span class="keybase-key-name">' + json.key_name + '</span>'
+        }).appendTo(settings.titleDiv);
+
+    };
+
+    var keySource = function(source) {
         var str;
         if (source.author && source.publication_year && source.title) {
             if (source.is_modified) {
@@ -329,7 +419,16 @@
                 }
             }
         }
-        return str;
+
+        if (!$(settings.sourceDiv).length) {
+            if (settings.sourceDiv.substr(0, 1) === '#') {
+                $('<div>', {id: settings.sourceDiv.substr(1)}).appendTo(settings.playerDiv);
+            }
+            else {
+                $('<div>', {class: settings.sourceDiv.substr(1)}).appendTo(settings.playerDiv);
+            }
+        }
+        $(settings.sourceDiv).html(str);
     };
 
     var nestedSets = function() {
@@ -373,112 +472,49 @@
         }
 
         // Current node
-        current_node = currentNode(next_id);
-
+        var current_node = currentNode(next_id);
         if (current_node.length > 0) {
-            var leads = [];
-            $.each(current_node, function(index, item) {
-                var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
-                leads.push(lead);
-            });
-            $('.keybase-player-currentnode:eq(0)>div:eq(0)').html('<ul>' + leads.join('') + '</ul>');
+            settings.currentNodeDisplay(current_node, '.' + settings.cssClass.currentNode);
         }
         else {
-            result = getResult();
-            if (result[0].url) {
-                var text = '<a href="' + result[0].url + '">' + result[0].item_name + '</a>';
-            }
-            else {
-                var text = result[0].item_name;
-            }
-            $('.keybase-player-currentnode:eq(0)>div:eq(0)').html('<div class="keybase-player-result">Result: <b>' + text + '</b></div>');
+            var result = getResult();
+            settings.resultDisplay(result, '.' + settings.cssClass.currentNode);
         }
-
         $('.keybase-player-startover:eq(0)>a:eq(0)').attr('href', '#l_' + rootNodeID);
         $('.keybase-player-stepback:eq(0)>a:eq(0)').attr('href', '#l_' + next_id);
 
-
         // Path
-        path = getPath();
-        var leads = [];
-        $.each(path, function(index, item) {
-            var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
-            leads.push(lead);
-        });
-        $('.keybase-player-path:eq(0)>div:eq(0)').html('<ol>' + leads.join('') + '</ol>');
+        var path = getPath();
+        settings.pathDisplay(path, '.' + settings.cssClass.path);
 
         // Remaining and discarded items
         auxRemaining();
-        remainingItems();
-
-        items = [];
-        $.each(remaining_items, function(index, item) {
-            var entity;
-            entity = '<li>';
-            if (item.url) {
-                entity += '<a href="' + item.url + '">' + item.item_name + '</a>';
-            }
-            else {
-                entity += item.item_name;
-            }
-            if (item.to_key) {
-                entity += '<a href="/keybase/key/show/' + item.to_key + '"><span class="keybase-player-tokey"></span></a>';
-            }
-            if (item.link_to_item_name) {
-                entity += ': ';
-                if (item.link_to_url) {
-                    entity += '<a href="' + item.link_to_url + '">' + item.link_to_item_name + '</a>';
-                }
-                else {
-                    entity += item.link_to_item_name;
-                }
-                if (item.link_to_key) {
-                    entity += '<a href="/keybase/key/show/' + item.link_to_key + '"><span class="keybase-player-tokey"></span></a>';
-                }
-            }
-            entity += '</li>';
-            items.push(entity);
-        });
-
-        $('.keybase-player-remainingitems:eq(0)>h3:eq(0)').html('Remaining items (' + remaining_items.length + ')');
-        $('.keybase-player-remainingitems:eq(0)>div:eq(0)').html('<ul>' + items.join('') + '</ul>');
-
-        items = [];
-        $.each(discarded_items, function(index, item) {
-            var entity;
-            entity = '<li>';
-            if (item.url) {
-                entity += '<a href="' + item.url + '">' + item.item_name + '</a>';
-            }
-            else {
-                entity += item.item_name;
-            }
-            if (item.to_key) {
-                entity += '<a href="/keybase/key/show/' + item.to_key + '"><span class="keybase-player-tokey"></span></a>';
-            }
-            if (item.link_to_item_name) {
-                entity += ': ';
-                if (item.link_to_url) {
-                    entity += '<a href="' + item.link_to_url + '">' + item.link_to_item_name + '</a>';
-                }
-                else {
-                    entity += item.link_to_item_name;
-                }
-                if (item.link_to_key) {
-                    entity += '<a href="/keybase/key/show/' + item.link_to_key + '"><span class="keybase-player-tokey"></span></a>';
-                }
-            }
-            entity += '</li>';
-            items.push(entity);
-        });
-
-        $('.keybase-player-discardeditems:eq(0)>h3:eq(0)').html('Discarded items (' + discarded_items.length + ')');
-        $('.keybase-player-discardeditems:eq(0)>div:eq(0)').html('<ul>' + items.join('') + '</ul>');
-
+        var items = remainingItems();
+        settings.remainingItemsDisplay(items.remaining, '.' + settings.cssClass.remainingItems);
+        settings.discardedItemsDisplay(items.discarded, '.' + settings.cssClass.discardedItems);
     };
 
     var currentNode = function(parentID) {
         return JSPath.apply('.leads{.parent_id === "'+  parentID + '"}', json);
+    };
+
+    $.fn.keybase.defaults.currentNodeDisplay = function(node, currentNodeDiv) {
+        var leads = [];
+        $.each(node, function(index, item) {
+            var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
+            leads.push(lead);
+        });
+        $(currentNodeDiv).eq(0).children('div').eq(0).html('<ul>' + leads.join('') + '</ul>');
+    };
+
+    $.fn.keybase.defaults.resultDisplay = function(result, resultDiv) {
+        if (result[0].url) {
+            var text = '<a href="' + result[0].url + '">' + result[0].item_name + '</a>';
+        }
+        else {
+            var text = result[0].item_name;
+        }
+        $(resultDiv).eq(0).children('div').eq(0).html('<div class="keybase-player-result">Result: <b>' + text + '</b></div>');
     };
 
     var getResult = function() {
@@ -490,13 +526,22 @@
         return JSPath.apply('.leads{.left <= ' + left + ' && .right >= ' + right + '}', json);
     };
 
+    $.fn.keybase.defaults.pathDisplay = function(path, pathDiv) {
+        var leads = [];
+        $.each(path, function(index, item) {
+            var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
+            leads.push(lead);
+        });
+        $(pathDiv).eq(0).children('div').eq(0).html('<ol>' + leads.join('') + '</ol>');
+    };
+
     var auxRemaining = function() {
         aux_remaining = JSPath.apply('.leads{.item && .left >= ' + left + ' && .right <= ' + right + '}.item', json);
     };
 
     var remainingItems = function() {
-        remaining_items = [];
-        discarded_items = [];
+        var remaining_items = [];
+        var discarded_items = [];
 
         $.each(json.items, function(index, item) {
             if (aux_remaining.indexOf(item.item_id) > -1) {
@@ -506,6 +551,81 @@
                 discarded_items.push(item);
             }
         })
+
+        var items = {
+            remaining: remaining_items,
+            discarded: discarded_items
+        };
+        return items;
+    };
+
+    $.fn.keybase.defaults.remainingItemsDisplay = function(items, itemsDiv) {
+        var list = [];
+        $.each(items, function(index, item) {
+            var entity;
+            entity = '<li>';
+            if (item.url) {
+                entity += '<a href="' + item.url + '">' + item.item_name + '</a>';
+            }
+            else {
+                entity += item.item_name;
+            }
+            if (item.to_key) {
+                entity += '<a href="/keybase/key/show/' + item.to_key + '"><span class="keybase-player-tokey"></span></a>';
+            }
+            if (item.link_to_item_name) {
+                entity += ': ';
+                if (item.link_to_url) {
+                    entity += '<a href="' + item.link_to_url + '">' + item.link_to_item_name + '</a>';
+                }
+                else {
+                    entity += item.link_to_item_name;
+                }
+                if (item.link_to_key) {
+                    entity += '<a href="/keybase/key/show/' + item.link_to_key + '"><span class="keybase-player-tokey"></span></a>';
+                }
+            }
+            entity += '</li>';
+            list.push(entity);
+        });
+
+        $(itemsDiv).eq(0).children('h3').eq(0).html('Remaining items (' + items.length + ')');
+        $(itemsDiv).eq(0).children('div').eq(0).html('<ul>' + list.join('') + '</ul>');
+
+    };
+
+    $.fn.keybase.defaults.discardedItemsDisplay = function(items, itemsDiv) {
+        var list = [];
+        $.each(items, function(index, item) {
+            var entity;
+            entity = '<li>';
+            if (item.url) {
+                entity += '<a href="' + item.url + '">' + item.item_name + '</a>';
+            }
+            else {
+                entity += item.item_name;
+            }
+            if (item.to_key) {
+                entity += '<a href="/keybase/key/show/' + item.to_key + '"><span class="keybase-player-tokey"></span></a>';
+            }
+            if (item.link_to_item_name) {
+                entity += ': ';
+                if (item.link_to_url) {
+                    entity += '<a href="' + item.link_to_url + '">' + item.link_to_item_name + '</a>';
+                }
+                else {
+                    entity += item.link_to_item_name;
+                }
+                if (item.link_to_key) {
+                    entity += '<a href="/keybase/key/show/' + item.link_to_key + '"><span class="keybase-player-tokey"></span></a>';
+                }
+            }
+            entity += '</li>';
+            list.push(entity);
+        });
+
+        $(itemsDiv).eq(0).children('h3').eq(0).html('Discarded items (' + items.length + ')');
+        $(itemsDiv).eq(0).children('div').eq(0).html('<ul>' + list.join('') + '</ul>');
     };
 
     var getParent = function(leadID) {
@@ -525,7 +645,7 @@
         $(settings.indentedKeyDiv).dynatree({
             children: indented_key,
             data: {mode: "all"},
-            expand: true,
+            expand: true
         });
     };
 

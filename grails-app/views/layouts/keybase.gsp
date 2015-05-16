@@ -7,20 +7,19 @@
 
 <g:applyLayout name="main">
 <head>
-
     <link href="/keybase/css/dynatree/skin-vista/ui.dynatree.css" rel="stylesheet" />
     <link href="/keybase/css/main.css" rel="stylesheet" />
     <link href="/keybase/css/keybase.dynatree.css" rel="stylesheet" />
 
     <script type="text/javascript" src="/keybase/js/jspath.min.js"></script>
-
+    <script type='text/javascript' src="http://cdnjs.cloudflare.com/ajax/libs/jquery-ajaxtransport-xdomainrequest/1.0.1/jquery.xdomainrequest.min.js"></script>
     <script type="text/javascript" src="/keybase/js/jquery-ui-widget.min.js"></script>
     <script type="text/javascript" src="/keybase/js/dynatree/jquery.dynatree.js"></script>
     <% if (params.controller == 'project' && params.action == 'show') { %>
-    <script type="text/javascript">var project_id = <%=params.id%></script>
+    <script type="text/javascript">var project_id = <%=params.id%>;</script>
     <% } %>
     <% if (params.controller == 'key' && params.action == 'show') { %>
-    <script type="text/javascript">var key_id = <%=params.id%></script>
+    <script type="text/javascript">var key_id = <%=params.id%>;</script>
     <% } %>
     <script type="text/javascript" src="/keybase/js/jquery.keybase.project.js"></script>
     <script type="text/javascript" src="/keybase/js/jquery.keybase.key.js"></script>
