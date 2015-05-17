@@ -5,19 +5,19 @@
  *
  * var options = {
  *   baseUrl: "http://keybase.rbg.vic.gov.au/ws/keyJSON",
- *   ajaxDataType: "jsonp",
+ *   ajaxDataType: "json",
  *   key: 2672,
  *   title: true,
  *   titleDiv: ".keybase-key-title",
  *   source: true,
  *   sourceDiv: ".keybase-key-source",
- *   cssClass": {
- *       currentNode: "keybase-player-currentnode",
- *       path: "keybase-player-path",
- *       remainingItems: "keybase-player-remainingitems",
- *       discardedItems: "keybase-player-discardeditems",
- *       stepBack: "keybase-player-stepback",
- *       startOver: "keybase-player-startover"
+ *   cssClass: {
+ *     currentNode: "keybase-player-currentnode",
+ *     path: "keybase-player-path",
+ *     remainingItems: "keybase-player-remainingitems",
+ *     discardedItems: "keybase-player-discardeditems",
+ *     stepBack: "keybase-player-stepback",
+ *     startOver: "keybase-player-startover"
  *   },
  *   playerDiv: "#keybase-player",
  *   currentNodeDisplay: function(node, currentNodeDiv),
@@ -28,9 +28,14 @@
  *   remainingItemsDisplay: function(items, itemsDiv),
  *   resultDisplay: function(result, resultDiv)
  * };
+ *
+ * Possible actions are 'player', 'indentedKey' and 'bracketedKey'. Action is optional: if no action is given, 'player'
+ * is assumed.
+ *
+ * There are default values for all options except 'key'. 'key' may also be replaced with a 'data' object, when another
+ * web service or file is being used. When a file is used 'data' should be an empty object or not defined at all and
+ * 'baseURL' should contain the entire path to the file. 'ajaxDataType' can be either 'json' (default) or 'jsonp'.
  */
-
-
 
 (function( $ ) {
     var settings;
@@ -121,28 +126,37 @@
             bracketedKey();
         }
 
-        console.log(settings);
     };
 
     $.fn.keybase.defaults = {
         baseUrl: "http://keybase.rbg.vic.gov.au/ws/keyJSON",
         ajaxDataType: 'json',
-        key: "",
         title: true,
         titleDiv: '.keybase-key-title',
         source: true,
-        sourceDiv: '.keybase-key-source'
+        sourceDiv: '.keybase-key-source',
+        cssClass: {
+            currentNode: 'keybase-player-currentnode',
+            path: 'keybase-player-path',
+            remainingItems: 'keybase-player-remainingitems',
+            discardedItems: 'keybase-player-discardeditems',
+            stepBack: 'keybase-player-stepback',
+            startOver: 'keybase-player-startover'
+        }
     };
 
-    $.fn.keybase.defaults.cssClass = {
-        currentNode: 'keybase-player-currentnode',
-        path: 'keybase-player-path',
-        remainingItems: 'keybase-player-remainingitems',
-        discardedItems: 'keybase-player-discardeditems',
-        stepBack: 'keybase-player-stepback',
-        startOver: 'keybase-player-startover'
-    };
 
+    /*
+     * KeyBase Player display functions
+     * Can be overridden by user.
+     */
+
+    /**
+     * playerEvents function
+     *
+     * Sets up the events that make the KeyBase Player work. They can, in principle, be overridden by the user, but
+     * doing so will most likely prevent the Player from working.
+     */
     $.fn.keybase.defaults.playerEvents = function() {
         $('.' + settings.cssClass.currentNode).on('click', 'a', function( event ) {
             event.preventDefault();
@@ -171,6 +185,13 @@
         });
     };
 
+    /**
+     * playerWindow function
+     *
+     * Sets up the window the KeyBase Player runs in. Can be overridden by the user. Any user-defined playerWindow
+     * function either must set up containers (divs) for the current node, path, remaining items and discarded items,
+     * or they must be already defined in the HTML.
+     */
     $.fn.keybase.defaults.playerWindow = function() {
         $('<div>', {class: 'keybase-player-window'}).appendTo(settings.playerDiv);
 
@@ -235,8 +256,6 @@
             'top': (($('.keybase-player-window').height() * 0.5) + 3) + 'px'
         });
 
-
-
         $('<h3>', {html: 'Current node'}).appendTo(currentNodeElem);
         $('<h3>', {html: 'Path'}).appendTo(pathElem);
         $('<h3>', {html: 'Remaining taxa'}).appendTo(remainingItemsElem);
@@ -290,7 +309,7 @@
             position = $('.keybase-player-leftpane').offset();
             $(document).mousemove(function(e) {
                 if (e.pageY > position.top+29
-                    && e.pageY < position.top+$('.keybase-player-window').height()-60) {
+                    && e.pageY < position.top+$('.keybase-player-window').height()-32) {
                     $('.keybase-player-leftpane .keybase-player-drag-updown').css('top', e.pageY-position.top+2);
                     currentNodeElem.css("height", e.pageY-position.top);
                     pathElem.css({'top': e.pageY-position.top+5,
@@ -302,10 +321,10 @@
                         pathElem.children('h3').height() -
                         (parseInt(pathElem.children('h3').css('padding-top'))*2)) + 'px');
                     if (pathElem.children('div').height() < 5) {
-                        pathItemsElem.children('div').css('overflow-y', 'hidden').children().hide();
+                        pathElem.children('div').children().hide();
                     }
                     else {
-                        pathItemsElem.children('div').css('overflow-y', 'auto').children().show();
+                        pathElem.children('div').children().show();
                     }
                 }
             })
@@ -329,10 +348,10 @@
                         discardedItemsElem.children('h3').height() -
                         (parseInt(discardedItemsElem.children('h3').css('padding-top'))*2)) + 'px');
                     if (discardedItemsElem.children('div').height() < 5) {
-                        discardedItemsElem.children('div').css('overflow-y', 'hidden').children().hide();
+                        discardedItemsElem.children('div').children().hide();
                     }
                     else {
-                        discardedItemsElem.children('div').css('overflow-y', 'auto').children().show();
+                        discardedItemsElem.children('div').children().show();
                     }
                 }
             })
@@ -341,12 +360,151 @@
         $(document).mouseup(function(e){
             $(document).unbind('mousemove');
         })
+    };
 
+    /**
+     * currentNodeDisplay function
+     *
+     * Displays the current node.
+     *
+     * @param node
+     * @param currentNodeDiv
+     */
+    $.fn.keybase.defaults.currentNodeDisplay = function(node, currentNodeDiv) {
+        var leads = [];
+        $.each(node, function(index, item) {
+            var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
+            leads.push(lead);
+        });
+        $(currentNodeDiv).eq(0).children('div').eq(0).html('<ul>' + leads.join('') + '</ul>');
+    };
 
+    /**
+     * resultDisplay function
+     *
+     * Displays the determination result.
+     *
+     * @param result
+     * @param resultDiv
+     */
+    $.fn.keybase.defaults.resultDisplay = function(result, resultDiv) {
+        if (result[0].url) {
+            var text = '<a href="' + result[0].url + '">' + result[0].item_name + '</a>';
+        }
+        else {
+            var text = result[0].item_name;
+        }
+        $(resultDiv).eq(0).children('div').eq(0).html('<div class="keybase-player-result">Result: <b>' + text + '</b></div>');
+    };
 
+    /**
+     * pathDisplay function
+     *
+     * Displays the path followed to get to the current couplet (or result).
+     *
+     * @param path
+     * @param pathDiv
+     */
+    $.fn.keybase.defaults.pathDisplay = function(path, pathDiv) {
+        var leads = [];
+        $.each(path, function(index, item) {
+            var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
+            leads.push(lead);
+        });
+        $(pathDiv).eq(0).children('div').eq(0).html('<ol>' + leads.join('') + '</ol>');
+    };
+
+    /**
+     * remainingItemsDisplay functions
+     *
+     * Displays the remaining items.
+     *
+     * @param items
+     * @param itemsDiv
+     */
+    $.fn.keybase.defaults.remainingItemsDisplay = function(items, itemsDiv) {
+        var list = [];
+        $.each(items, function(index, item) {
+            var entity;
+            entity = '<li>';
+            if (item.url) {
+                entity += '<a href="' + item.url + '">' + item.item_name + '</a>';
+            }
+            else {
+                entity += item.item_name;
+            }
+            if (item.to_key) {
+                entity += '<a href="/keybase/key/show/' + item.to_key + '"><span class="keybase-player-tokey"></span></a>';
+            }
+            if (item.link_to_item_name) {
+                entity += ': ';
+                if (item.link_to_url) {
+                    entity += '<a href="' + item.link_to_url + '">' + item.link_to_item_name + '</a>';
+                }
+                else {
+                    entity += item.link_to_item_name;
+                }
+                if (item.link_to_key) {
+                    entity += '<a href="/keybase/key/show/' + item.link_to_key + '"><span class="keybase-player-tokey"></span></a>';
+                }
+            }
+            entity += '</li>';
+            list.push(entity);
+        });
+
+        $(itemsDiv).eq(0).children('h3').eq(0).html('Remaining items (' + items.length + ')');
+        $(itemsDiv).eq(0).children('div').eq(0).html('<ul>' + list.join('') + '</ul>');
 
     };
 
+    /**
+     * discardedItemsDisplay function
+     *
+     * Displays the discarded items.
+     *
+     * @param items
+     * @param itemsDiv
+     */
+    $.fn.keybase.defaults.discardedItemsDisplay = function(items, itemsDiv) {
+        var list = [];
+        $.each(items, function(index, item) {
+            var entity;
+            entity = '<li>';
+            if (item.url) {
+                entity += '<a href="' + item.url + '">' + item.item_name + '</a>';
+            }
+            else {
+                entity += item.item_name;
+            }
+            if (item.to_key) {
+                entity += '<a href="/keybase/key/show/' + item.to_key + '"><span class="keybase-player-tokey"></span></a>';
+            }
+            if (item.link_to_item_name) {
+                entity += ': ';
+                if (item.link_to_url) {
+                    entity += '<a href="' + item.link_to_url + '">' + item.link_to_item_name + '</a>';
+                }
+                else {
+                    entity += item.link_to_item_name;
+                }
+                if (item.link_to_key) {
+                    entity += '<a href="/keybase/key/show/' + item.link_to_key + '"><span class="keybase-player-tokey"></span></a>';
+                }
+            }
+            entity += '</li>';
+            list.push(entity);
+        });
+
+        $(itemsDiv).eq(0).children('h3').eq(0).html('Discarded items (' + items.length + ')');
+        $(itemsDiv).eq(0).children('div').eq(0).html('<ul>' + list.join('') + '</ul>');
+    };
+
+
+    /**
+     * function keyTitle
+     *
+     * Displays the title of the key.
+     */
     var keyTitle = function() {
         if (!$(settings.titleDiv).length) {
             if (settings.titleDiv.substr(0, 1) === '#') {
@@ -368,6 +526,13 @@
 
     };
 
+    /**
+     * function keySource
+     *
+     * Displays the source publication of the key.
+     *
+     * @param source
+     */
     var keySource = function(source) {
         var str;
         if (source.author && source.publication_year && source.title) {
@@ -431,6 +596,17 @@
         $(settings.sourceDiv).html(str);
     };
 
+    /*
+     * KeyBase processing functions
+     */
+
+    /**
+     * function nestedSets
+     *
+     * Creates the nested sets that are necessary to run or reproduce the key. Initiates the getNode function, which
+     * will do the heavy lifting and when the getNode function has traversed all the nodes creates the nested set for
+     * the root node.
+     */
     var nestedSets = function() {
         nested_sets = [];
 
@@ -443,10 +619,16 @@
 
         json.first_step.left = 1;
         json.first_step.right = Math.max.apply(Math, JSPath.apply('.right', nested_sets));
-
-        //$('#response').JSONView(nested_sets);
     };
 
+    /**
+     * function getNode
+     *
+     * Work horse for the nestedSets function: traverses the key by finding the leads for which the parent ID is the
+     * ID for the current lead at each step.
+     *
+     * @param parentID
+     */
     var getNode = function(parentID) {
         var items = JSPath.apply('.leads{.parent_id==' + parentID + '}', json);
         $.each(items, function( index, item ) {
@@ -460,6 +642,14 @@
         });
     };
 
+    /**
+     * function nextCouplet
+     *
+     * Main function for the KeyBase Player. Calls the processing functions that return the current node, path followed
+     * to get to the current node, and remaining and discarded items as Javascript Objects and then the display
+     * functions that will turn the Javascript into human readable HTML. Display functions can be overridden by the user
+     * when the KeyBase function is called.
+     */
     var nextCouplet = function() {
         if (next_id == rootNodeID) {
             left = json.first_step.left;
@@ -488,58 +678,65 @@
         settings.pathDisplay(path, '.' + settings.cssClass.path);
 
         // Remaining and discarded items
-        auxRemaining();
-        var items = remainingItems();
+        var remaining_items = auxRemaining();
+        var items = remainingItems(remaining_items);
         settings.remainingItemsDisplay(items.remaining, '.' + settings.cssClass.remainingItems);
         settings.discardedItemsDisplay(items.discarded, '.' + settings.cssClass.discardedItems);
     };
 
+    /**
+     * function currentNode
+     *
+     * @param parentID
+     * @returns {*}
+     */
     var currentNode = function(parentID) {
         return JSPath.apply('.leads{.parent_id === "'+  parentID + '"}', json);
     };
 
-    $.fn.keybase.defaults.currentNodeDisplay = function(node, currentNodeDiv) {
-        var leads = [];
-        $.each(node, function(index, item) {
-            var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
-            leads.push(lead);
-        });
-        $(currentNodeDiv).eq(0).children('div').eq(0).html('<ul>' + leads.join('') + '</ul>');
-    };
-
-    $.fn.keybase.defaults.resultDisplay = function(result, resultDiv) {
-        if (result[0].url) {
-            var text = '<a href="' + result[0].url + '">' + result[0].item_name + '</a>';
-        }
-        else {
-            var text = result[0].item_name;
-        }
-        $(resultDiv).eq(0).children('div').eq(0).html('<div class="keybase-player-result">Result: <b>' + text + '</b></div>');
-    };
-
+    /**
+     * function getResult
+     *
+     * Gets the determination result when the currentNode is not a couplet, but a taxon.
+     *
+     * @returns {*}
+     */
     var getResult = function() {
         var item_id = JSPath.apply('.leads{.lead_id == "'+  next_id + '"}.item', json)[0];
         return JSPath.apply('.items{.item_id == "'+  item_id + '"}', json);
     };
 
+    /**
+     * function getPath
+     *
+     * Gets the path followed to get to the current node.
+     *
+     * @returns {*}
+     */
     var getPath = function() {
         return JSPath.apply('.leads{.left <= ' + left + ' && .right >= ' + right + '}', json);
     };
 
-    $.fn.keybase.defaults.pathDisplay = function(path, pathDiv) {
-        var leads = [];
-        $.each(path, function(index, item) {
-            var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
-            leads.push(lead);
-        });
-        $(pathDiv).eq(0).children('div').eq(0).html('<ol>' + leads.join('') + '</ol>');
-    };
-
+    /**
+     * function auxRemaining
+     *
+     * Help function that gets all the items that are still in play
+     *
+     * @returns {*}
+     */
     var auxRemaining = function() {
-        aux_remaining = JSPath.apply('.leads{.item && .left >= ' + left + ' && .right <= ' + right + '}.item', json);
+        return JSPath.apply('.leads{.item && .left >= ' + left + ' && .right <= ' + right + '}.item', json);
     };
 
-    var remainingItems = function() {
+    /**
+     * function remainingItems
+     *
+     * Splits the items into remaining and discarded items
+     *
+     * @param aux_remaining
+     * @returns {{remaining: Array, discarded: Array}}
+     */
+    var remainingItems = function(aux_remaining) {
         var remaining_items = [];
         var discarded_items = [];
 
@@ -559,79 +756,27 @@
         return items;
     };
 
-    $.fn.keybase.defaults.remainingItemsDisplay = function(items, itemsDiv) {
-        var list = [];
-        $.each(items, function(index, item) {
-            var entity;
-            entity = '<li>';
-            if (item.url) {
-                entity += '<a href="' + item.url + '">' + item.item_name + '</a>';
-            }
-            else {
-                entity += item.item_name;
-            }
-            if (item.to_key) {
-                entity += '<a href="/keybase/key/show/' + item.to_key + '"><span class="keybase-player-tokey"></span></a>';
-            }
-            if (item.link_to_item_name) {
-                entity += ': ';
-                if (item.link_to_url) {
-                    entity += '<a href="' + item.link_to_url + '">' + item.link_to_item_name + '</a>';
-                }
-                else {
-                    entity += item.link_to_item_name;
-                }
-                if (item.link_to_key) {
-                    entity += '<a href="/keybase/key/show/' + item.link_to_key + '"><span class="keybase-player-tokey"></span></a>';
-                }
-            }
-            entity += '</li>';
-            list.push(entity);
-        });
 
-        $(itemsDiv).eq(0).children('h3').eq(0).html('Remaining items (' + items.length + ')');
-        $(itemsDiv).eq(0).children('div').eq(0).html('<ul>' + list.join('') + '</ul>');
-
-    };
-
-    $.fn.keybase.defaults.discardedItemsDisplay = function(items, itemsDiv) {
-        var list = [];
-        $.each(items, function(index, item) {
-            var entity;
-            entity = '<li>';
-            if (item.url) {
-                entity += '<a href="' + item.url + '">' + item.item_name + '</a>';
-            }
-            else {
-                entity += item.item_name;
-            }
-            if (item.to_key) {
-                entity += '<a href="/keybase/key/show/' + item.to_key + '"><span class="keybase-player-tokey"></span></a>';
-            }
-            if (item.link_to_item_name) {
-                entity += ': ';
-                if (item.link_to_url) {
-                    entity += '<a href="' + item.link_to_url + '">' + item.link_to_item_name + '</a>';
-                }
-                else {
-                    entity += item.link_to_item_name;
-                }
-                if (item.link_to_key) {
-                    entity += '<a href="/keybase/key/show/' + item.link_to_key + '"><span class="keybase-player-tokey"></span></a>';
-                }
-            }
-            entity += '</li>';
-            list.push(entity);
-        });
-
-        $(itemsDiv).eq(0).children('h3').eq(0).html('Discarded items (' + items.length + ')');
-        $(itemsDiv).eq(0).children('div').eq(0).html('<ul>' + list.join('') + '</ul>');
-    };
-
+    /**
+     * function getParent
+     *
+     * Gets the parent ID for the lead (based on the lead ID). Used to get the lead ID to initiate the trace back
+     * functions.
+     *
+     * @param leadID
+     * @returns {*}
+     */
     var getParent = function(leadID) {
         return JSPath.apply('.leads{.lead_id === "'+  leadID + '"}.parent_id[0]', json);
     };
 
+
+    /**
+     * function indentedKey
+     *
+     * Initiates the indentedKeyNode function that creates the indented key. At the moment there is no display function
+     * for the indented key yet and the display depends on the Dynatree widget.
+     */
     var indentedKey = function() {
         indented_key = [];
         var root = {};
@@ -649,6 +794,14 @@
         });
     };
 
+    /**
+     * function indentedKeyNode
+     *
+     * Creates the indented key nodes.
+     *
+     * @param parent_id
+     * @param parent
+     */
     var indentedKeyNode = function(parent_id, parent) {
         var children = JSPath('.{.parent_id==' + parent_id + '}', nested_sets);
         parent.children = [];
@@ -694,6 +847,12 @@
         }
     };
 
+    /**
+     * function bracketedKey
+     *
+     * Creates the bracketed key. At the moment there is no display function for the bracketed key yet and the display
+     * depends on the Dynatree widget, which is not very suitable for the purpose.
+     */
     var bracketedKey = function() {
         bracketed_key = [];
         parent_ids = JSPath.apply('.parent_id', nested_sets);
