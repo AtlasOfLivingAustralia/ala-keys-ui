@@ -39,15 +39,21 @@
 
 (function( $ ) {
     var settings;
-    var json;
 
+    var json;
     var rootNodeID;
     var next_id;
+    var nested_sets;
+    var current_node;
 
     var currentNodeElem;
     var pathElem;
     var remainingItemsElem;
     var discardedItemsElem;
+
+    var filter_items = [];
+    var filter_leads = [];
+    var filter_parents = [];
 
     $.fn.keybase = function() {
         elem = this;
@@ -258,8 +264,8 @@
 
         $('<h3>', {html: 'Current node'}).appendTo(currentNodeElem);
         $('<h3>', {html: 'Path'}).appendTo(pathElem);
-        $('<h3>', {html: 'Remaining taxa'}).appendTo(remainingItemsElem);
-        $('<h3>', {html: 'Discarded taxa'}).appendTo(discardedItemsElem);
+        $('<h3>', {html: 'Remaining taxa (<span class="keybase-num-remaining"></span>)'}).appendTo(remainingItemsElem);
+        $('<h3>', {html: 'Discarded taxa (<span class="keybase-num-discarded"></span>)'}).appendTo(discardedItemsElem);
 
         $('<div>').appendTo(currentNodeElem);
         $('<div>').appendTo(pathElem);
@@ -286,6 +292,17 @@
         $('<a>', {href: '#'}).appendTo('.' + settings.cssClass.startOver);
         $('<span>', {class: settings.cssClass.stepBack}).appendTo('.keybase-player-menu');
         $('<a>', {href: '#'}).appendTo('.' + settings.cssClass.stepBack);
+
+        $('body').on('click', '.keybase-player-filter a', function(e) {
+            e.preventDefault();
+            settings.localFilter();
+        });
+
+        // Local filter button
+        $('<span>', {class: 'keybase-player-menu'}).appendTo('.' + settings.cssClass.remainingItems + ' h3');
+        $('<span>', {class: 'keybase-player-filter'}).appendTo('.' + settings.cssClass.remainingItems + ' .keybase-player-menu');
+        $('<a>', {href: '#'}).appendTo('.keybase-player-filter');
+
 
         // Resize Player panes
         var position;
@@ -321,10 +338,10 @@
                         pathElem.children('h3').height() -
                         (parseInt(pathElem.children('h3').css('padding-top'))*2)) + 'px');
                     if (pathElem.children('div').height() < 5) {
-                        pathElem.children('div').children().hide();
+                        pathElem.children('div').css('overflow', 'hidden').children().hide();
                     }
                     else {
-                        pathElem.children('div').children().show();
+                        pathElem.children('div').css('overflow', 'auto').children().show();
                     }
                 }
             })
@@ -348,10 +365,10 @@
                         discardedItemsElem.children('h3').height() -
                         (parseInt(discardedItemsElem.children('h3').css('padding-top'))*2)) + 'px');
                     if (discardedItemsElem.children('div').height() < 5) {
-                        discardedItemsElem.children('div').children().hide();
+                        discardedItemsElem.children('div').css('overflow', 'hidden').children().hide();
                     }
                     else {
-                        discardedItemsElem.children('div').children().show();
+                        discardedItemsElem.children('div').css('overflow', 'auto').children().show();
                     }
                 }
             })
@@ -408,9 +425,11 @@
     $.fn.keybase.defaults.pathDisplay = function(path, pathDiv) {
         var leads = [];
         $.each(path, function(index, item) {
-            var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
-            leads.push(lead);
-        });
+            if (filter_parents[item.parent_id] > 1) {
+                var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
+                leads.push(lead);
+            }
+         });
         $(pathDiv).eq(0).children('div').eq(0).html('<ol>' + leads.join('') + '</ol>');
     };
 
@@ -452,7 +471,7 @@
             list.push(entity);
         });
 
-        $(itemsDiv).eq(0).children('h3').eq(0).html('Remaining items (' + items.length + ')');
+        $(itemsDiv).eq(0).find('.keybase-num-remaining').eq(0).html(items.length);
         $(itemsDiv).eq(0).children('div').eq(0).html('<ul>' + list.join('') + '</ul>');
 
     };
@@ -662,7 +681,7 @@
         }
 
         // Current node
-        var current_node = currentNode(next_id);
+        currentNode(next_id);
         if (current_node.length > 0) {
             settings.currentNodeDisplay(current_node, '.' + settings.cssClass.currentNode);
         }
@@ -691,7 +710,20 @@
      * @returns {*}
      */
     var currentNode = function(parentID) {
-        return JSPath.apply('.leads{.parent_id === "'+  parentID + '"}', json);
+        if (filter_leads.length === 0) {
+            current_node = JSPath.apply('.leads{.parent_id === "' + parentID + '"}', json);
+        }
+        else {
+            var path = '.leads{.parent_id == "' + parentID + '"}{.lead_id==$lead_id}';
+            var node = JSPath.apply(path, json, {lead_id: filter_leads});
+            if (node.length === 1) {
+                next_id = node[0].lead_id;
+                currentNode(next_id);
+            }
+            else {
+                current_node = node;
+            }
+        }
     };
 
     /**
@@ -740,7 +772,16 @@
         var remaining_items = [];
         var discarded_items = [];
 
-        $.each(json.items, function(index, item) {
+        var items;
+        if (filter_items.length === 0) {
+            items = json.items;
+        }
+        else {
+            var path = '.items{.item_id===$item_id}';
+            items = JSPath.apply(path, json, {item_id: filter_items});
+        }
+
+        $.each(items, function(index, item) {
             if (aux_remaining.indexOf(item.item_id) > -1) {
                 remaining_items.push(item);
             }
@@ -906,6 +947,301 @@
             data: {mode: "all"},
             expand: true
         });
+    };
+
+
+    /*
+     * Filter functions
+     */
+
+    /**
+     * function localFilter
+     *
+     * Sets up the window for the local filter, as well as the functionality.
+     */
+    $.fn.keybase.defaults.localFilter = function() {
+
+        var localFilter = $('<div>', {class: 'keybase-local-filter'});
+        var divIncluded = $('<div>');
+        var divExcluded = $('<div>');
+        var labelIncluded = $('<label>', {for: 'initems', html: 'Included items'});
+        var labelExcluded = $('<label>', {for: 'outitems', html: 'Excluded items'});
+        var selectIncluded = $('<select>', {name:"includedItems", id: 'initems', multiple:"multiple"});
+        var selectExcluded = $('<select>', {name:"excludedItems", id: 'outitems', multiple:"multiple"});
+
+        incl = [];
+        excl = [];
+        $.each(json.items, function(index, item) {
+            var name = item.item_name;
+            name += (item.link_to_item_name) ? ': ' + item.link_to_item_name : '';
+            var opt = '<option value="' + item.item_id + '">' + name + '</option>';
+            if (filter_items.length === 0 || filter_items.indexOf(item.item_id) !== -1) {
+                incl.push(opt);
+            }
+            else {
+                excl.push(opt);
+            }
+        });
+
+        selectIncluded.append(incl.join(''));
+        sortOptions('includedItems');
+        if (excl) {
+            selectExcluded.append(excl.join(''));
+            sortOptions('excludedItems');
+        }
+
+        var buttonDiv = $('<div>', {class: 'keybase-filter-buttons'});
+        buttonDiv.append('<span><button class="keybase-filter-button-excl"></button></span>').
+            append('<span><button class="keybase-filter-button-excl-all"></button></span>').
+            append('<span><button class="keybase-filter-button-incl"></button></span>').
+            append('<span><button class="keybase-filter-button-incl-all"></button></span>');
+
+        var footerDiv = $('<div>', {class: 'keybase-local-filter-footer'});
+        footerDiv.append('<button class="keybase-local-filter-cancel">Cancel</button>').
+            append('<button class="keybase-local-filter-ok">OK</button>');
+
+        divIncluded.append(labelIncluded).append(selectIncluded);
+        divExcluded.append(labelExcluded).append(selectExcluded);
+
+        localFilter.append(divIncluded).append(buttonDiv).append(divExcluded).append(footerDiv);
+
+        keybaseLightBox(localFilter);
+
+        boxHeaders();
+
+        $('.keybase-filter-button-excl').click(function(e) {
+            $('[name=includedItems]>option:selected').each(function() {
+                $(this).remove();
+                $(this).removeAttr('selected')
+                $('[name=excludedItems]').append($(this));
+            });
+            sortOptions('excludedItems');
+            filterItems();
+            boxHeaders();
+        });
+
+        $('.keybase-filter-button-excl-all').click(function(e) {
+            $('[name=includedItems]>option').each(function() {
+                $(this).remove();
+                $(this).removeAttr('selected')
+                $('[name=excludedItems]').append($(this));
+            });
+            sortOptions('excludedItems');
+            filterItems();
+            boxHeaders();
+        });
+
+        $('.keybase-filter-button-incl').click(function(e) {
+            $('[name=excludedItems]>option:selected').each(function() {
+                $(this).remove();
+                $(this).removeAttr('selected')
+                $('[name=includedItems]').append($(this));
+            });
+            sortOptions('includedItems');
+            filterItems();
+            boxHeaders();
+        });
+
+        $('.keybase-filter-button-incl-all').click(function(e) {
+            $('[name=excludedItems]>option').each(function() {
+                $(this).remove();
+                $(this).removeAttr('selected')
+                $('[name=includedItems]').append($(this));
+            });
+            sortOptions('includedItems');
+            filterItems();
+            boxHeaders();
+        });
+
+        $('.keybase-local-filter-cancel').click(function() {
+            closeKeybaseLightbox();
+        });
+
+        $('.keybase-local-filter-ok').click(function() {
+            closeKeybaseLightbox();
+            if (filter_items.length) {
+                setFilter();
+            }
+            else {
+                removeFilter();
+            }
+        });
+    };
+
+    /**
+     * function keybaseLightBox
+     *
+     * LightBox for the local filter.
+     *
+     * @param content
+     */
+    var keybaseLightBox = function(content) {
+        // add lightbox/shadow <div/>'s if not previously added
+        if($('#keybase-lightbox').size() == 0){
+            var theLightbox = $('<div id="keybase-lightbox"/>');
+            theLightbox.append(
+                '<div class="keybase-lightbox-header">' +
+                    '<i class="keybase-lightbox-close fa fa-close pull-right fa-border"></i>' +
+                    '</div>').
+                append('<div class="keybase-lightbox-content"></div>').
+                append('<div class="keybase-lightbox-footer"></div>');
+
+            var theShadow = $('<div id="keybase-lightbox-shadow"/>');
+            theShadow.css('height', $(document).height() + 'px');
+            $(theShadow).click(function(e){
+                closeKeybaseLightbox();
+            });
+
+            $('body').append(theShadow);
+            $('body').append(theLightbox);
+            $(document).keydown(function (e) {
+                if (e.keyCode == 27) {
+                    closeKeybaseLightbox();
+                }
+            });
+            $('.keybase-lightbox-close').click(function() {
+                closeKeybaseLightbox();
+            });
+        }
+
+        // remove any previously added content
+        $('.keybase-lightbox-content').empty();
+
+        // insert HTML content
+        if(content != null){
+            $('.keybase-lightbox-content').append(content);
+        }
+
+        // move the lightbox to the current window top + 100px
+        $('#keybase-lightbox').css('top', $(window).scrollTop() + 100 + 'px');
+
+        // display the lightbox
+        $('#keybase-lightbox').show();
+        $('#keybase-lightbox-shadow').show();
+
+    };
+
+    /**
+     * function closeKeybaseLightbox
+     *
+     * Closes the light box.
+     */
+    var closeKeybaseLightbox = function() {
+        // hide lightbox and shadow <div/>'s
+        $('#keybase-lightbox').hide();
+        $('#keybase-lightbox-shadow').hide();
+
+        // remove contents of lightbox in case a video or other content is actively playing
+        $('.keybase-lightbox-content').empty();
+    };
+
+    /**
+     * function sortOptions
+     *
+     * Orders the options for the included and excluded items in the local filter.
+     *
+     * @param select
+     */
+    var sortOptions = function(select) {
+        var options = $('[name=' + select + ']>option');
+        options.sort(function(a,b) {
+            if (a.text > b.text) return 1;
+            else if (a.text < b.text) return -1;
+            else return 0
+        });
+        $('[name=' + select + ']').html(options);
+    };
+
+    /**
+     * function boxHeaders
+     *
+     * Sets the labels for the included and excluded items selects in the local filter. Label includes
+     * the number of options in the select.
+     */
+    var boxHeaders = function() {
+        $('label[for="initems"]').text('Included taxa (' + $('#initems>option').length + ')');
+        $('label[for="outitems"]').text('Excluded taxa (' + $('#outitems>option').length + ')');
+    };
+
+    /**
+     * function filterItems
+     *
+     * Creates an array of item IDs for items to filter on, based on the options in the Included items select.
+     */
+    var filterItems = function() {
+        filter_items = [];
+        var initems = $('[name=includedItems]>option');
+        var outitems = $('[name=excludedItems]>option');
+        if (initems.length && outitems.length) {
+            $('[name=includedItems]>option').each(function () {
+                filter_items.push($(this).val());
+            });
+        }
+    };
+
+    /**
+     * function setFilter
+     *
+     * Calls the function that creates the filtered key and restarts the key.
+     */
+    var setFilter = function() {
+        filterLeads();
+        next_id = rootNodeID;
+        nextCouplet();
+        if ($('.keybase-player-filter-remove').length === 0) {
+            remainingItemsElem.children('h3').children('.keybase-player-menu').append('<span class="keybase-player-filter-remove"><a href="#"></a></span>');
+            $('.keybase-player-filter-remove').click(function(e) {
+                e.preventDefault();
+                removeFilter();
+            });
+        }
+    };
+
+    /**
+     * function filterLeads
+     *
+     * Creates the array with leads that need to be followed to key out all items in the filter.
+     */
+    var filterLeads = function() {
+        var path = '.{.item==$item}.left';
+        var filter_nodes = JSPath.apply(path, nested_sets, {item: filter_items});
+
+        filter_leads = [];
+        var parents = [];
+        $.each(filter_nodes, function(index, node) {
+            var leads = JSPath.apply('.{.left <= '+ node + '}{.right >= ' + node + '}', nested_sets);
+            $.each(leads, function(ind, lead) {
+                if (filter_leads.indexOf(lead.lead_id) === -1) {
+                    filter_leads.push(lead.lead_id);
+                    parents.push(lead.parent_id);
+                }
+            });
+        });
+
+        // get object with parent_ids and their number of occurrences in the filtered set
+        filter_parents = parents.reduce(function (acc, curr) {
+            if (typeof acc[curr] == 'undefined') {
+                acc[curr] = 1;
+            } else {
+                acc[curr] += 1;
+            }
+            return acc;
+        }, {});
+
+    };
+
+    /**
+     * function removeFilter
+     *
+     * Destroys the filter.
+     */
+    var removeFilter = function() {
+        filter_items = [];
+        filter_leads = [];
+        filter_parents = [];
+        next_id = rootNodeID;
+        nextCouplet();
+        $('.keybase-player-filter-remove').remove();
     };
 
 }( jQuery ));
