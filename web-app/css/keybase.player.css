@@ -203,3 +203,108 @@ select[name=includedItems], select[name=excludedItems] {
     font-weight: bold;
     color: #0088cc;
 }
+
+/* bracketed key display
+-------------------------------------------*/
+.keybase-bracketed-key {
+    margin: 20px 0 30px 0;
+}
+
+.keybase-bracketed-key .keybase-couplet {
+    margin: 15px 0;
+    border-bottom: solid 1px #eee;
+}
+
+.keybase-bracketed-key .keybase-couplet:last-child {
+    border-bottom: 0;
+}
+
+.keybase-bracketed-key .keybase-lead {
+    margin: 8px 10px;
+    padding-left: 35px;
+}
+
+.keybase-bracketed-key .keybase-lead::before, .keybase-bracketed-key .keybase-lead::after {
+    display: block;
+    clear: both;
+    content: '';
+}
+
+.keybase-bracketed-key .keybase-from-node {
+    display: inline-block;
+    float: left;
+    margin-left: -35px;
+    font-weight: bold;
+}
+
+.keybase-bracketed-key .keybase-from-node::after {
+    content: ':';
+}
+
+.keybase-bracketed-key .keybase-lead:first-child .keybase-from-node::after {
+    content: '';
+}
+
+.keybase-bracketed-key .keybase-lead-text {
+    display: inline-block;
+    background: content-box;
+}
+
+.keybase-bracketed-key .keybase-to-node {
+    display: inline-block;
+    float: right;
+    font-weight: bold;
+}
+
+.keybase-bracketed-key .keybase-to-item {
+    display: inline-block;
+    float: right;
+}
+
+/* Indented key display
+-----------------------------------*/
+.keybase-indented-key {
+    margin-top: 20px;
+    margin-bottom: 30px;
+}
+
+.keybase-indented-key ul {
+    padding-left: 20px;
+}
+
+.keybase-indented-key>ul {
+    padding-left: 0;
+    margin: 0 10px;
+}
+
+.keybase-indented-key li {
+    list-style-type: none;
+}
+
+.keybase-indented-key .keybase-lead {
+    margin-bottom: 10px;
+}
+
+.keybase-indented-key .keybase-lead::before, .keybase-indented-key .keybase-lead::after {
+    display: block;
+    clear: both;
+    content: '';
+}
+
+/*.keybase-indented-key .keybase-from-node {
+    display: none;
+}*/
+.keybase-indented-key .keybase-from-node {
+    display: inline-block;
+    margin-right: 6px;
+    font-weight: bold;
+}
+
+.keybase-indented-key .keybase-from-node::after {
+    content: '.';
+}
+
+.keybase-indented-key .keybase-to-node, .keybase-indented-key .keybase-to-item {
+    display: inline-block;
+    float: right;
+}

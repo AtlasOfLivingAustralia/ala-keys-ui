@@ -37,6 +37,8 @@
  * 'baseURL' should contain the entire path to the file. 'ajaxDataType' can be either 'json' (default) or 'jsonp'.
  */
 
+var indented_key;
+var indentedKeyHtml;
 (function( $ ) {
     var settings;
 
@@ -44,6 +46,7 @@
     var rootNodeID;
     var next_id;
     var nested_sets;
+    var keyNodes;
     var current_node;
 
     var currentNodeElem;
@@ -58,13 +61,14 @@
     $.fn.keybase = function() {
         elem = this;
 
+        var options;
         if (arguments.length === 1) {
-            var options = arguments[0];
+            options = arguments[0];
         }
 
         if (arguments.length === 2) {
             var action = arguments[0];
-            var options = arguments[1];
+            options = arguments[1];
         }
 
         settings = $.extend(true, {}, $.fn.keybase.defaults, settings, options);
@@ -114,6 +118,7 @@
                     next_id = rootNodeID;
 
                     nestedSets();
+                    getNodes();
                     nextCouplet();
                     settings.playerEvents();
                 },
@@ -126,10 +131,12 @@
 
         if (action === "indentedKey") {
             indentedKey();
+            $.fn.keybase.defaults.indentedKeyDisplay();
         }
 
         if (action === "bracketedKey") {
             bracketedKey();
+            $.fn.keybase.defaults.bracketedKeyDisplay();
         }
 
     };
@@ -661,6 +668,25 @@
         });
     };
 
+    var getNodes = function() {
+        var parent_ids = JSPath.apply('.parent_id', nested_sets);
+        var ids = [];
+        keyNodes = [];
+        var i = 1;
+
+        $.each(parent_ids, function(index, item) {
+            if (ids.indexOf(item) === -1) {
+                ids.push(item);
+                var node = {
+                    "parent_id": item,
+                    "node_number": i
+                };
+                keyNodes.push(node);
+                i++;
+            }
+        });
+    };
+
     /**
      * function nextCouplet
      *
@@ -828,11 +854,74 @@
 
         indentedKeyNode(rootNodeID, root);
         indented_key.push(root);
-        $(settings.indentedKeyDiv).dynatree({
+    };
+
+    $.fn.keybase.defaults.indentedKeyDisplay = function() {
+        //console.log(JSON.stringify(indented_key, null, '  '));
+        /*$(settings.indentedKeyDiv).dynatree({
             children: indented_key,
             data: {mode: "all"},
             expand: true
-        });
+        });*/
+        //$(settings.indentedKeyDiv).html(JSON.stringify(indented_key, null, '  '));
+
+        indentedKeyHtml = '<div class="keybase-indented-key">';
+        displayIndentedKeyCouplet(indented_key[0].children[0]);
+
+        indentedKeyHtml += '</div> <!-- /.keybase-indented-key -->';
+
+        $(settings.indentedKeyDiv).html(indentedKeyHtml);
+    };
+
+    var displayIndentedKeyCouplet = function(couplet) {
+        var leads = couplet.children;
+        indentedKeyHtml += '<ul class="keybase-couplet">';
+        for (var i = 0; i < leads.length; i++) {
+            var lead = leads[i];
+            indentedKeyHtml += '<li>';
+            indentedKeyHtml += '<div class="keybase-lead">';
+            indentedKeyHtml += '<span class="keybase-from-node">' + lead.fromNode + '</span>';
+            indentedKeyHtml += '<span class="keybase-lead-text">' + lead.title + '</span>';
+            var child = lead.children[0];
+            if (child.title === "Couplet") {
+                indentedKeyHtml += '</div> <!-- /.keybase-lead -->';
+                displayIndentedKeyCouplet(child);
+            }
+            else {
+                console.log(child.children[0]);
+                var item = JSPath.apply('.items{.item_id==' + child.children[0].item_id + '}', json)[0];
+                indentedKeyHtml += '<span class="keybase-to-item">';
+                if (item.url) {
+                    indentedKeyHtml += '<a href="' + item.url + '">' + item.item_name + '</a>';
+                }
+                else {
+                    indentedKeyHtml += item.item_name;
+                }
+                if (item.to_key) {
+                    indentedKeyHtml += '<a href="' + item.to_key + '"><span class="keybase-player-tokey"></span></a>';
+                }
+
+                if (item.link_to_id) {
+                    indentedKeyHtml += ': ';
+                    if (item.link_to_url) {
+                        indentedKeyHtml += '<a href="' + item.link_to_url + '">' + item.link_to_item_name + '</a>';
+                    }
+                    else {
+                        indentedKeyHtml += item.link_to_item_name;
+                    }
+                    if (item.link_to_key) {
+                        indentedKeyHtml += '<a href="' + item.link_to_key + '"><span class="keybase-player-tokey"></span></a>';
+                    }
+
+                }
+
+                indentedKeyHtml += '</span> <!-- /.keybase-to-item -->';
+                indentedKeyHtml += '</div> <!-- /.keybase-lead -->';
+            }
+            indentedKeyHtml += '</li>';
+        }
+
+        indentedKeyHtml += '</ul> <!-- /.keybase-couplet -->';
     };
 
     /**
@@ -857,17 +946,27 @@
             //parent.children = children;
             $.each(children, function(index, lead) {
                 var child = $.extend({}, lead);
+
+                child.fromNode = JSPath.apply('.{.parent_id ==="' +  child.parent_id+ '"}', keyNodes)[0].node_number;
+                //delete child.parent_id;
+
+                var toNode = JSPath.apply('.{.parent_id ==="' +  child.lead_id+ '"}', keyNodes);
+                if (toNode.length > 0) {
+                    child.toNode = toNode[0].node_number;
+                }
+                //delete child.lead_id;
+
                 child.title = lead.lead_text;
                 child.href = "#" + lead.lead_id;
                 child.expand = true;
                 if (child.item == null) {
                     delete child.item;
                 }
-                delete child.lead_text;
+                //delete child.lead_text;
                 delete child.left;
                 delete child.right;
-                delete child.lead_id;
-                delete child.parent_id;
+
+
                 couplet.children[index] = child;
                 indentedKeyNode(lead.lead_id, child);
             });
@@ -879,6 +978,7 @@
             taxa.children = [];
 
             var taxon = {};
+            taxon.item_id = parent.item;
             taxon.title = JSPath.apply('.items{.item_id==' + parent.item + '}.item_name', json)[0];
             taxa.children[0] = taxon;
             //alert (taxon.title);
@@ -918,6 +1018,17 @@
                 leads = JSPath.apply('.{.parent_id==' + parent + '}', nested_sets);
                 $.each(leads, function(index, lead) {
                     var l = {};
+                    l.fromNode = JSPath.apply('.{.parent_id ==="' +  lead.parent_id+ '"}', keyNodes)[0].node_number;
+                    //delete child.parent_id;
+
+                    var toNode = JSPath.apply('.{.parent_id ==="' +  lead.lead_id+ '"}', keyNodes);
+                    if (toNode.length > 0) {
+                        l.toNode = toNode[0].node_number;
+                    }
+                    //delete child.lead_id;
+                    l.parent_id = lead.parent_id;
+                    l.lead_id = lead.lead_id;
+
                     l.title = lead.lead_text;
                     l.href = '#' + lead.lead_id;
                     l.expand = true;
@@ -929,6 +1040,7 @@
                         items.expand = true;
                         items.children = [];
                         var item = {};
+                        item.item_id = lead.item;
                         item.title = JSPath.apply('.items{.item_id==' + lead.item + '}.item_name', json)[0];
                         item.expand = true;
                         items.children.push(item);
@@ -941,12 +1053,72 @@
             }
         });
         bracketed_key.push(root);
+    };
 
-        $(settings.bracketedKeyDiv).dynatree({
+    $.fn.keybase.defaults.bracketedKeyDisplay = function() {
+        /*$(settings.bracketedKeyDiv).dynatree({
             children: bracketed_key,
             data: {mode: "all"},
             expand: true
-        });
+        });*/
+        var html = '<div class="keybase-bracketed-key">';
+        var couplets = bracketed_key[0].children;
+        for (var i = 0; i < couplets.length; i++)  {
+            var couplet = couplets[i];
+            var leads = couplet.children;
+            html += '<div class="keybase-couplet" id="l_' + leads[0].lead_id + '">';
+            //html += '<span class="test">' + JSON.stringify(couplet.children) + '</span>';
+            for (var j = 0; j < leads.length; j++) {
+                var lead = leads[j];
+                var items = lead.children;
+                html += '<div class="keybase-lead">';
+                html += '<span class="keybase-from-node">' + lead.fromNode + '</span>';
+                html += '<span class="keybase-lead-text">' + lead.title + '</span>';
+                if (lead.toNode !== undefined) {
+                    html += '<span class="keybase-to-node"><a href="#l_' + lead.lead_id + '">' + lead.toNode + '</a></span>';
+                }
+                else {
+                    var toItem = items[0].children[0];
+                    var item = JSPath.apply('.items{.item_id==' + toItem.item_id + '}', json)[0];
+                    html += '<span class="keybase-to-item">';
+                    if (item.url) {
+                        html += '<a href="' + item.url + '">' + item.item_name + '</a>';
+                    }
+                    else {
+                        html += item.item_name;
+                    }
+                    if (item.to_key) {
+                        html += '<a href="' + item.to_key + '"><span class="keybase-player-tokey"></span></a>';
+                    }
+
+                    if (item.link_to_id) {
+                        html += ': ';
+                        if (item.link_to_url) {
+                            html += '<a href="' + item.link_to_url + '">' + item.link_to_item_name + '</a>';
+                        }
+                        else {
+                            html += item.link_to_item_name;
+                        }
+                        if (item.link_to_key) {
+                            html += '<a href="' + item.link_to_key + '"><span class="keybase-player-tokey"></span></a>';
+                        }
+
+                    }
+
+                    html += '</span> <!-- /.to-item -->';
+                }
+                html += '</div> <!-- /.keybase-lead -->';
+            }
+            html += '</div> <!-- /.keybase-couplet -->';
+
+        }
+        html += '</div> <!-- /.keybase-bracketed_key -->';
+        $(settings.bracketedKeyDiv).html(html);
+
+        /*$('.keybase-bracketed-key .keybase-lead').each(function() {
+            var divHeight = $(this).height();
+            $(this).find('.keybase-from-node').eq(0).css({'height': divHeight + 'px'});
+        });*/
     };
 
 
