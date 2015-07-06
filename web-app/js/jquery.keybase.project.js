@@ -263,7 +263,7 @@
         elem.on('click', 'a.dynatree-title', function(e) {
             e.preventDefault();
             var key_id = $(this).attr('href').substr(1);
-            location.href = 'index.html?key_id=' + key_id;
+            location.href = '/keybase/key/show/' + key_id;
         });
     };
 
