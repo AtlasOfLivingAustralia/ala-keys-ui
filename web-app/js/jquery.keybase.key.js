@@ -37,15 +37,16 @@
  * 'baseURL' should contain the entire path to the file. 'ajaxDataType' can be either 'json' (default) or 'jsonp'.
  */
 
-var indented_key;
-var indentedKeyHtml;
+var json;
+var nested_sets;
+
 (function( $ ) {
     var settings;
 
-    var json;
+    //var json;
     var rootNodeID;
     var next_id;
-    var nested_sets;
+    //var nested_sets;
     var keyNodes;
     var current_node;
 
@@ -57,6 +58,10 @@ var indentedKeyHtml;
     var filter_items = [];
     var filter_leads = [];
     var filter_parents = [];
+
+    var indented_key;
+    var indentedKeyHtml;
+
 
     $.fn.keybase = function() {
         elem = this;
@@ -432,7 +437,7 @@ var indentedKeyHtml;
     $.fn.keybase.defaults.pathDisplay = function(path, pathDiv) {
         var leads = [];
         $.each(path, function(index, item) {
-            if (filter_parents[item.parent_id] > 1) {
+            if (!filter_parents.length || filter_parents[item.parent_id] > 1) {
                 var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
                 leads.push(lead);
             }
@@ -857,14 +862,6 @@ var indentedKeyHtml;
     };
 
     $.fn.keybase.defaults.indentedKeyDisplay = function() {
-        //console.log(JSON.stringify(indented_key, null, '  '));
-        /*$(settings.indentedKeyDiv).dynatree({
-            children: indented_key,
-            data: {mode: "all"},
-            expand: true
-        });*/
-        //$(settings.indentedKeyDiv).html(JSON.stringify(indented_key, null, '  '));
-
         indentedKeyHtml = '<div class="keybase-indented-key">';
         displayIndentedKeyCouplet(indented_key[0].children[0]);
 
@@ -888,7 +885,6 @@ var indentedKeyHtml;
                 displayIndentedKeyCouplet(child);
             }
             else {
-                console.log(child.children[0]);
                 var item = JSPath.apply('.items{.item_id==' + child.children[0].item_id + '}', json)[0];
                 indentedKeyHtml += '<span class="keybase-to-item">';
                 if (item.url) {

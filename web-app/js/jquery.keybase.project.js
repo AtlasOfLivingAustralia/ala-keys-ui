@@ -17,7 +17,7 @@
             },
             projectIconBaseUrl: "/keybase/images/projecticons/",
             defaultProjectIcon: "project_icon_default.png"
-        }, options);
+        }, $.fn.keybaseProject.defaults, options);
 
 
         /*
@@ -105,7 +105,7 @@
                         json = data;
 
                         $('<div>', {class: 'keybase-project-icon'})
-                            .append('<img src="/keybase/images/projecticons/' + json[0].project_icon + '" alt="" />')
+                            .append('<img src="' + settings.projectIconBaseUrl + json[0].project_icon + '" alt="" />')
                             .appendTo('.keybase-project-metadata');
 
                         $('<h1>', {
@@ -153,6 +153,12 @@
             //
         }
 
+    };
+
+    $.fn.keybaseProject.defaults = {};
+
+    $.fn.keybaseProject.defaults.keyLinkClick = function(keyID) {
+        location.href = '/keybase/key/show/' + keyID;
     };
 
     var hierarchical = function() {
@@ -208,7 +214,7 @@
             elem.on('click', 'a.dynatree-title', function (e) {
                 e.preventDefault();
                 var key_id = $(this).attr('href').substr(1);
-                location.href = '/keybase/key/show/' + key_id;
+                settings.keyLinkClick(key_id);
             });
         }
     };
@@ -263,7 +269,7 @@
         elem.on('click', 'a.dynatree-title', function(e) {
             e.preventDefault();
             var key_id = $(this).attr('href').substr(1);
-            location.href = '/keybase/key/show/' + key_id;
+            settings.keyLinkClick(key_id);
         });
     };
 

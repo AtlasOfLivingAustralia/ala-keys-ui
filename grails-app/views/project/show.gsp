@@ -24,7 +24,7 @@
                         <div>
                             <input type="text" class="form-control" id="taxonomicScopeSearch" placeholder="Search...">
                             <input type="hidden" id="search-project-id" />
-                            <button type="submit" class="btn btn-primary"><i class="fa fa-search fa-2x"></i></button>
+                            <button type="submit" class="btn btn-primary"><i class="fa fa-search fa-lg"></i></button>
                         </div>
                     </div>
                 </form>
