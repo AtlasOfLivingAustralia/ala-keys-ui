@@ -39,9 +39,11 @@
 
 var json;
 var nested_sets;
+var settings;
+var bracketed_key;
 
 (function( $ ) {
-    var settings;
+    //var settings;
 
     //var json;
     var rootNodeID;
@@ -91,12 +93,11 @@ var nested_sets;
             }
         }
 
-        if (!json) {
+        if (!json || settings.reset === true) {
             var contentType ="application/x-www-form-urlencoded; charset=utf-8";
 
             if(window.XDomainRequest) //for IE8,IE9
                 contentType = "text/plain";
-
 
             $.ajax({
                 url: settings.baseUrl,
@@ -107,14 +108,14 @@ var nested_sets;
                     json = data;
 
                     if (settings.title) {
-                        keyTitle();
+                        settings.keyTitle(json);
                     }
 
                     if (settings.source) {
-                        keySource(json.source);
+                        settings.keySource(json.source);
                     }
 
-                    if (!$('.keybase-player-window').length) {
+                    if ((!action || action === 'player') && !$('.keybase-player-window').length) {
                         settings.playerWindow();
                     }
 
@@ -126,6 +127,16 @@ var nested_sets;
                     getNodes();
                     nextCouplet();
                     settings.playerEvents();
+
+                    if (action === "indentedKey") {
+                        indentedKey();
+                        $.fn.keybase.defaults.indentedKeyDisplay(json);
+                    }
+
+                    if (action === "bracketedKey") {
+                        bracketedKey();
+                        $.fn.keybase.defaults.bracketedKeyDisplay(json);
+                    }
                 },
                 error:function(jqXHR,textStatus,errorThrown) {
                     alert("You can not send Cross Domain AJAX requests: "+errorThrown);
@@ -134,16 +145,38 @@ var nested_sets;
 
         }
 
-        if (action === "indentedKey") {
-            indentedKey();
-            $.fn.keybase.defaults.indentedKeyDisplay();
-        }
+        else {
+            if (settings.title) {
+                settings.keyTitle(json);
+            }
 
-        if (action === "bracketedKey") {
-            bracketedKey();
-            $.fn.keybase.defaults.bracketedKeyDisplay();
-        }
+            if (settings.source) {
+                settings.keySource(json.source);
+            }
 
+            if ((!action || action === 'player') && !$('.keybase-player-window').length) {
+                settings.playerWindow();
+            }
+
+            // root node
+            rootNodeID = json.first_step.root_node_id;
+            next_id = rootNodeID;
+
+            nestedSets();
+            getNodes();
+            nextCouplet();
+            settings.playerEvents();
+
+            if (action === "indentedKey") {
+                indentedKey();
+                $.fn.keybase.defaults.indentedKeyDisplay(json);
+            }
+
+            if (action === "bracketedKey") {
+                bracketedKey();
+                $.fn.keybase.defaults.bracketedKeyDisplay(json);
+            }
+        }
     };
 
     $.fn.keybase.defaults = {
@@ -160,7 +193,8 @@ var nested_sets;
             discardedItems: 'keybase-player-discardeditems',
             stepBack: 'keybase-player-stepback',
             startOver: 'keybase-player-startover'
-        }
+        },
+        reset: false
     };
 
 
@@ -369,7 +403,7 @@ var nested_sets;
                     remainingItemsElem.css("height", e.pageY-position.top);
                     discardedItemsElem.css({'top': e.pageY-position.top+5,
                         'height': ($('.keybase-player-window').height() -
-                            remainingItemsElem.height()-6) + 'px'});
+                        remainingItemsElem.height()-6) + 'px'});
                     remainingItemsElem.children('div').css('height', (remainingItemsElem.height() -
                         remainingItemsElem.children('h3').height() -
                         (parseInt(remainingItemsElem.children('h3').css('padding-top'))*2)) + 'px');
@@ -441,7 +475,7 @@ var nested_sets;
                 var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
                 leads.push(lead);
             }
-         });
+        });
         $(pathDiv).eq(0).children('div').eq(0).html('<ol>' + leads.join('') + '</ol>');
     };
 
@@ -536,7 +570,7 @@ var nested_sets;
      *
      * Displays the title of the key.
      */
-    var keyTitle = function() {
+    $.fn.keybase.defaults.keyTitle = function(json) {
         if (!$(settings.titleDiv).length) {
             if (settings.titleDiv.substr(0, 1) === '#') {
                 $('<div>', {id: settings.titleDiv.substr(1)}).appendTo(settings.playerDiv);
@@ -564,7 +598,7 @@ var nested_sets;
      *
      * @param source
      */
-    var keySource = function(source) {
+    $.fn.keybase.defaults.keySource = function(source) {
         var str;
         if (source.author && source.publication_year && source.title) {
             if (source.is_modified) {
@@ -861,7 +895,7 @@ var nested_sets;
         indented_key.push(root);
     };
 
-    $.fn.keybase.defaults.indentedKeyDisplay = function() {
+    $.fn.keybase.defaults.indentedKeyDisplay = function(json) {
         indentedKeyHtml = '<div class="keybase-indented-key">';
         displayIndentedKeyCouplet(indented_key[0].children[0]);
 
@@ -1051,18 +1085,18 @@ var nested_sets;
         bracketed_key.push(root);
     };
 
-    $.fn.keybase.defaults.bracketedKeyDisplay = function() {
+    $.fn.keybase.defaults.bracketedKeyDisplay = function(json) {
         /*$(settings.bracketedKeyDiv).dynatree({
-            children: bracketed_key,
-            data: {mode: "all"},
-            expand: true
-        });*/
+         children: bracketed_key,
+         data: {mode: "all"},
+         expand: true
+         });*/
         var html = '<div class="keybase-bracketed-key">';
         var couplets = bracketed_key[0].children;
         for (var i = 0; i < couplets.length; i++)  {
             var couplet = couplets[i];
             var leads = couplet.children;
-            html += '<div class="keybase-couplet" id="l_' + leads[0].lead_id + '">';
+            html += '<div class="keybase-couplet" id="l_' + leads[0].parent_id + '">';
             //html += '<span class="test">' + JSON.stringify(couplet.children) + '</span>';
             for (var j = 0; j < leads.length; j++) {
                 var lead = leads[j];
@@ -1112,9 +1146,9 @@ var nested_sets;
         $(settings.bracketedKeyDiv).html(html);
 
         /*$('.keybase-bracketed-key .keybase-lead').each(function() {
-            var divHeight = $(this).height();
-            $(this).find('.keybase-from-node').eq(0).css({'height': divHeight + 'px'});
-        });*/
+         var divHeight = $(this).height();
+         $(this).find('.keybase-from-node').eq(0).css({'height': divHeight + 'px'});
+         });*/
     };
 
 
@@ -1249,8 +1283,8 @@ var nested_sets;
             var theLightbox = $('<div id="keybase-lightbox"/>');
             theLightbox.append(
                 '<div class="keybase-lightbox-header">' +
-                    '<i class="keybase-lightbox-close fa fa-close pull-right fa-border"></i>' +
-                    '</div>').
+                '<i class="keybase-lightbox-close fa fa-close pull-right fa-border"></i>' +
+                '</div>').
                 append('<div class="keybase-lightbox-content"></div>').
                 append('<div class="keybase-lightbox-footer"></div>');
 
