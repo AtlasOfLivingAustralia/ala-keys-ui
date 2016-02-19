@@ -310,8 +310,8 @@ var bracketed_key;
 
         $('<h3>', {html: 'Current node'}).appendTo(currentNodeElem);
         $('<h3>', {html: 'Path'}).appendTo(pathElem);
-        $('<h3>', {html: 'Remaining taxa (<span class="keybase-num-remaining"></span>)'}).appendTo(remainingItemsElem);
-        $('<h3>', {html: 'Discarded taxa (<span class="keybase-num-discarded"></span>)'}).appendTo(discardedItemsElem);
+        $('<h3>', {html: 'Remaining items (<span class="keybase-num-remaining"></span>)'}).appendTo(remainingItemsElem);
+        $('<h3>', {html: 'Discarded items (<span class="keybase-num-discarded"></span>)'}).appendTo(discardedItemsElem);
 
         $('<div>').appendTo(currentNodeElem);
         $('<div>').appendTo(pathElem);

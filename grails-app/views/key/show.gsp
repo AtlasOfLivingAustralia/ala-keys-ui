@@ -23,7 +23,7 @@
 
                     <!-- Nav tabs -->
                     <ul class="nav nav-tabs" role="tablist">
-                        <li role="presentation" class="active"><a href="#tab_player" aria-controls="player" role="tab" data-toggle="tab">Player</a></li>
+                        <li role="presentation" class="active"><a href="#tab_player" aria-controls="player" role="tab" data-toggle="tab">Interactive key</a></li>
                         <li role="presentation"><a href="#tab_bracketed" aria-controls="bracketed" role="tab" data-toggle="tab">Bracketed key</a></li>
                         <li role="presentation"><a href="#tab_indented" aria-controls="indented" role="tab" data-toggle="tab">Indented key</a></li>
                         <li role="presentation"><a href="#tab_about" aria-controls="about" role="tab" data-toggle="tab">About</a></li>
