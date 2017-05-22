@@ -45,7 +45,10 @@
  *   playerWindow: function(),
  *   remainingItemsDisplay: function(items, itemsDiv),
  *   resultDisplay: function(result, resultDiv),
- *   renderItemLink: function(item)
+ *   renderItemLink: function(item),
+ *   filterItems: []|undefined,     // array of item IDs
+ *   filterItemNames: []|undefined  // array of item names
+ *   
  * };
  *
  * Possible actions are 'player', 'indentedKey' and 'bracketedKey'. Action is optional: if no action is given, 'player'
@@ -64,7 +67,6 @@
 
     var rootNodeID;
     var next_id;
-    //var nested_sets;
     var keyNodes;
     var current_node;
 
@@ -115,12 +117,17 @@
 
         settings = $.extend(true, {}, $.fn.keybase.defaults, settings, options);
         
-        if (settings.filter_items.length > 0) {
-            filter_items = settings.filter_items;
+        if (settings.filterItems.length > 0) {
+            filter_items = settings.filterItems;
         }
         else {
-            if (!(filter_items !== undefined && filter_items.length > 0 && settings.reset !== true)) {
-                filter_items = [];
+            if (settings.filterItemNames.length > 0) {
+                filter_items = JSPath.apply('.items{.item_name===$item_name}.item_id', $.fn.keybase.getters.jsonKey(), {item_name: settings.filterItemNames});
+            }
+            else {
+                if (!(filter_items !== undefined && filter_items.length > 0 && settings.reset !== true)) {
+                    filter_items = [];
+                }
             }
         }
         $.fn.keybase.setActiveFilter = function(filter) {
@@ -157,9 +164,13 @@
                 data: {key_id: settings.key},
                 dataType: settings.ajaxDataType,
                 contentType: contentType,
-                success:function(data){
+                beforeSend: function() {
+                    settings.beforeSend();
+                },
+                success: function(data){
                     json = data;
-
+                    settings.onJson();
+                    
                     if (settings.title) {
                         settings.keyTitle(json);
                     }
@@ -171,10 +182,13 @@
                     if ((!action || action === 'player') && !$('.keybase-player-window').length) {
                         settings.playerWindow();
                     }
-
+                    
                     // root node
                     rootNodeID = json.first_step.root_node_id;
                     next_id = rootNodeID;
+
+                    linkItems();
+                    sortItems();
 
                     nestedSets();
                     getNodes();
@@ -192,13 +206,14 @@
                     }
 
                     if (action === "bracketedKey") {
-                        console.log(action);
                         bracketedKey();
-                        console.log(filter_items);
                         settings.bracketedKeyDisplay(json);
                     }
 
                     settings.onLoad(json);
+                },
+                complete: function() {
+                    settings.onComplete();
                 },
                 error:function(jqXHR,textStatus,errorThrown) {
                     alert("You can not send Cross Domain AJAX requests: " + errorThrown);
@@ -221,6 +236,8 @@
 
             // root node
             rootNodeID = json.first_step.root_node_id;
+            console.log(typeof next_id);
+            console.log(next_id);
             next_id = rootNodeID;
 
             nestedSets();
@@ -252,6 +269,9 @@
         titleDiv: '.keybase-key-title',
         source: true,
         sourceDiv: '.keybase-key-source',
+        playerDiv: '#keybase-player',
+        bracketedKeyDiv: '#keybase-bracketed',
+        indentedKeyDiv: '#keybase-indented',
         cssClass: {
             currentNode: 'keybase-player-currentnode',
             path: 'keybase-player-path',
@@ -261,9 +281,12 @@
             startOver: 'keybase-player-startover'
         },
         reset: false,
+        beforeSend: function() {},
+        onJson: function() {}, 
         onLoad: function() {},
+        onComplete: function() {},
         onFilterWindowOpen: function() {},
-        filter_items: [],
+        filterItems: [],
         onBracketedKeyComplete: function() {},
         onIndentedKeyComplete: function() {}
     };
@@ -281,8 +304,8 @@
      * so you can run consecutive keys in the same page.
      */
     $.fn.keybase.defaults.playerEvents = function() {
-        $('.' + settings.cssClass.currentNode).off('click', 'a', currentNodeHandler);
-        $('.' + settings.cssClass.currentNode).on('click', 'a', currentNodeHandler);
+        $('.' + settings.cssClass.currentNode).off('click', 'a.keybase-lead', currentNodeHandler);
+        $('.' + settings.cssClass.currentNode).on('click', 'a.keybase-lead', currentNodeHandler);
 
         $('.' + settings.cssClass.path).off('click', 'a', stepBackHandler);
         $('.' + settings.cssClass.path).on('click', 'a', stepBackHandler);
@@ -290,8 +313,8 @@
         $('.' + settings.cssClass.stepBack).off('click', 'a', stepBackHandler);
         $('.' + settings.cssClass.stepBack).on('click', 'a', stepBackHandler);
 
-        $('.' + settings.cssClass.startOver).off('click', 'a.first-node', startOverHandler);
-        $('.' + settings.cssClass.startOver).on('click', 'a.first-node', startOverHandler);
+        $('.' + settings.cssClass.startOver).off('click', 'a', startOverHandler);
+        $('.' + settings.cssClass.startOver).on('click', 'a', startOverHandler);
         
         $('body').off('click', '.keybase-player-filter a', filterHandler);
         $('body').on('click', '.keybase-player-filter a', filterHandler);
@@ -350,7 +373,7 @@
      */
     var startOverHandler = function( event ) {
         event.preventDefault();
-        next_id = $(event.target).attr('href').replace("#l_", "");
+        next_id = $(event.target).parents('a').eq(0).attr('href').replace("#l_", "");
         nextCouplet();
     };
     
@@ -441,9 +464,9 @@
 
         // Resize Player panes
         var position;
-        $('.keybase-player-window').on('mousedown', '.keybase-player-drag-leftright', dragLeftRight);
-        $('.keybase-player-leftpane').on('mousedown', '.keybase-player-drag-updown', dragUpDownLeftPane);
-        $('.keybase-player-rightpane').on('mousedown', '.keybase-player-drag-updown', dragUpDownRightPane);
+        $('.keybase-player-window').on('mousedown', '.keybase-player-drag-leftright', $.fn.keybase.dragLeftRight);
+        $('.keybase-player-leftpane').on('mousedown', '.keybase-player-drag-updown', $.fn.keybase.dragUpDownLeftPane);
+        $('.keybase-player-rightpane').on('mousedown', '.keybase-player-drag-updown', $.fn.keybase.dragUpDownRightPane);
 
         $(document).mouseup(function(e){
             $(document).unbind('mousemove');
@@ -489,9 +512,9 @@
         $('.' + settings.cssClass.path + ', .' + settings.cssClass.discardedItems).css({
             'top': (($('.keybase-player-window').height() * 0.5) + 3) + 'px'
         });
-    }
+    };
     
-    var dragLeftRight = function(event) {
+    $.fn.keybase.dragLeftRight = function(event) {
         event.preventDefault();
         position = $('.keybase-player-window').offset();
         $(document).mousemove(function(e){
@@ -505,7 +528,7 @@
         });
     };
     
-    var dragUpDownLeftPane = function(event) {
+    $.fn.keybase.dragUpDownLeftPane = function(event) {
         event.preventDefault();
         position = $('.keybase-player-leftpane').offset();
         $(document).mousemove(function(e) {
@@ -531,7 +554,7 @@
         });
     }
     
-    var dragUpDownRightPane = function(event) {
+    $.fn.keybase.dragUpDownRightPane = function(event) {
         event.preventDefault();
         position = $('.keybase-player-rightpane').offset();
         $(document).mousemove(function(e) {
@@ -569,7 +592,7 @@
     $.fn.keybase.defaults.currentNodeDisplay = function(node, currentNodeDiv) {
         var leads = [];
         $.each(node, function(index, item) {
-            var lead = '<li><a href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
+            var lead = '<li><a class="keybase-lead" href="#l_' + item.lead_id + '">' + item.lead_text + '</li>';
             leads.push(lead);
         });
         $(currentNodeDiv).eq(0).children('div').eq(0).html('<ul>' + leads.join('') + '</ul>');
@@ -712,7 +735,7 @@
 
         $('<h1>', {
             style: "float:left;",
-            html: '<a href="/keybase/project/show/' + json.project.project_id + '"<span class="keybase-project-name">' + json.project.project_name + '</span></a>: <span class="keybase-key-name">' + json.key_name + '</span>'
+            html: '<a href="/keybase/project/show/' + json.project.project_id + '"<span class="keybase-project-name">' + json.project.project_name + '</span></a>: <span class="keybase-key-name">' + json.key_title + '</span>'
         }).appendTo(settings.titleDiv);
 
     };
@@ -1017,7 +1040,7 @@
     var indentedKey = function() {
         indented_key = [];
         var root = {};
-        root.title = json.key_name;
+        root.title = json.key_title;
         root.isFolder = true;
         root.expand = true;
         root.children = [];
@@ -1133,7 +1156,7 @@
 
             var taxon = {};
             taxon.item_id = item;
-            taxon.title = JSPath.apply('.items{.item_id==' + item + '}.item_name', json)[0];
+            taxon.title = JSPath.apply('.items{.item_id==="' + item + '"}.item_name', json)[0];
             taxa.children[0] = taxon;
             //alert (taxon.title);
             taxa.expand = true;
@@ -1176,7 +1199,7 @@
                 displayIndentedKeyCouplet(child);
             }
             else {
-                var item = JSPath.apply('.items{.item_id==' + child.children[0].item_id + '}', json)[0];
+                var item = JSPath.apply('.items{.item_id==="' + child.children[0].item_id + '"}', json)[0];
                 indentedKeyHtml += '<span class="keybase-to-item">';
                 indentedKeyHtml += settings.renderItemLink(item);
                 indentedKeyHtml += '</span> <!-- /.keybase-to-item -->';
@@ -1200,7 +1223,7 @@
         var nodes = [];
 
         var root = {};
-        root.title = json.key_name;
+        root.title = json.key_title;
         root.isFolder = true;
         root.expand = true;
         root.children = [];
@@ -1255,7 +1278,7 @@
                             items.children = [];
                             var item = {};
                             item.item_id = lead.item;
-                            item.title = JSPath.apply('.items{.item_id==' + lead.item + '}.item_name', json)[0];
+                            item.title = JSPath.apply('.items{.item_id==="' + lead.item + '"}.item_name', json)[0];
                             item.expand = true;
                             items.children.push(item);
                             l.children.push(items);
@@ -1310,7 +1333,7 @@
                     items.children = [];
                     var item = {};
                     item.item_id = toNode[0].item;
-                    item.title = JSPath.apply('.items{.item_id==' + toNode[0].item + '}.item_name', json)[0];
+                    item.title = JSPath.apply('.items{.item_id==="' + toNode[0].item + '"}.item_name', json)[0];
                     item.expand = true;
                     items.children.push(item);
                     return {items: items};
@@ -1349,7 +1372,7 @@
                 }
                 else {
                     var toItem = items[0].children[0];
-                    var item = JSPath.apply('.items{.item_id==' + toItem.item_id + '}', json)[0];
+                    var item = JSPath.apply('.items{.item_id=="' + toItem.item_id + '"}', json)[0];
                     html += '<span class="keybase-to-item">';
                     html += settings.renderItemLink(item);
                     html += '</span> <!-- /.to-item -->';
@@ -1678,5 +1701,90 @@
         $('.keybase-player-filter').css('background-color', '#ddd');
         $('.keybase-player-filter-remove').remove();
     };
+    
+    
+    /**
+     * 
+     */
+    var linkItems = function() {
+        var link_through_leads = JSPath.apply('.leads{.lead_text==="[link through]"}.parent_id', json);
+        if (link_through_leads.length > 0) {
+            var link_item_ids = [];
+            var link_items = [];
+            var removeLeads = [];
+            $.each(json.leads, function(index, lead) {
+                if (lead.lead_text === "[link through]") {
+                    console.log(lead);
+                    var parent_lead = JSPath.apply('.leads{.lead_id=="' + lead.parent_id + '"}', json)[0];
+                    if (link_item_ids.indexOf(lead.item) === -1) {
+                        link_item_ids.push(lead.item);
+                        var link_item = {
+                            item_id: lead.item,
+                            parent_id: parent_lead.item
+                        };
+                        link_items.push(link_item);
+                    }
+                    parent_lead.item += '_' + lead.item;
+                    removeLeads.push(index);
+                }
+            });
+            
+            json.leads = $.grep(json.leads, function(n, i) {
+                return $.inArray(i, removeLeads) ==-1;
+            });
+            
+            $.each(json.items, function(index, item) {
+                var i = link_item_ids.indexOf(item.item_id);
+                if (i > -1) {
+                    var parent_item = JSPath.apply('.items{.item_id==="' + link_items[i].parent_id + '"}', json)[0];
+                    item.link_to_item_id = item.item_id;
+                    item.item_id = parent_item.item_id + '_' + item.item_id;
+                    item.link_to_item_name = item.item_name;
+                    item.link_to_url = item.url;
+                    item.link_to_key = item.to_key;
+                    item.item_name = parent_item.item_name;
+                    item.url = parent_item.url;
+                    item.to_key = parent_item.to_key;
+                } 
+            });
+            
+            var keyed_out_items = JSPath.apply('.leads{.item}.item', json);
+            var removeItems = [];
+            $.each(json.items, function(index, item) {
+                if (keyed_out_items.indexOf(item.item_id) === -1) {
+                    removeItems.push(index);
+                }
+            })
+            
+            json.items = $.grep(json.items, function(n, i) {
+                return $.inArray(i, removeItems) ==-1;
+            });
+            
+            //console.log(JSON.stringify(json, null, 4));
+        }
+    }
+    
+    var sortItems = function() {
+        json.items.sort(function(a, b) {
+            var sort_a = a.item_name + (a.link_to_item_name ? a.link_to_item_name : '');
+            var sort_b = b.item_name + (b.link_to_item_name ? b.link_to_item_name : '');
+            if (sort_a > sort_b) {
+                return 1;
+            }
+            if (sort_a < sort_b) {
+                return -1;
+            }
+            return 0;
+        });
+    };
+    
+    var unique = function(list) {
+        var result = [];
+        $.each(list, function(i, e) {
+            if ($.inArray(e, result) == -1) result.push(e);
+        });
+        return result;
+    }
+
 
 }( jQuery ));
